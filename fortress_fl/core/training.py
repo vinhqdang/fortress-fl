@@ -13,7 +13,8 @@ from .fortress_fl import FortressFL
 def train_fortress_fl(operators_data: List[Dict], n_rounds: int, model_dim: int,
                      learning_rate: float = 0.01, security_param: int = 2048,
                      lambda_rep: float = 0.1, sigma_dp: float = 0.1, epsilon_dp: float = 0.1,
-                     test_data: Dict = None, verbose: bool = True) -> Tuple[np.ndarray, Dict]:
+                     byzantine_operators: List[int] = None, test_data: Dict = None,
+                     verbose: bool = True) -> Tuple[np.ndarray, Dict]:
     """
     Complete multi-round FORTRESS-FL training.
 
@@ -26,6 +27,7 @@ def train_fortress_fl(operators_data: List[Dict], n_rounds: int, model_dim: int,
         lambda_rep: Reputation update rate
         sigma_dp: DP noise standard deviation
         epsilon_dp: Per-round privacy budget
+        byzantine_operators: Optional list of Byzantine operator indices (for compatibility)
         test_data: Optional test data for evaluation
         verbose: Whether to print detailed progress
 
@@ -34,6 +36,13 @@ def train_fortress_fl(operators_data: List[Dict], n_rounds: int, model_dim: int,
     """
     n_operators = len(operators_data)
     operator_ids = [op['id'] for op in operators_data]
+
+    # Handle byzantine_operators parameter for compatibility with documentation
+    if byzantine_operators is not None:
+        # Update operators_data with Byzantine status if provided
+        for i, operator in enumerate(operators_data):
+            if i in byzantine_operators:
+                operator['is_byzantine'] = True
 
     if verbose:
         print(f"🚀 Starting FORTRESS-FL Training")

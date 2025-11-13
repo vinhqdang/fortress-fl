@@ -227,8 +227,9 @@ class MPCProtocol:
     In practice, would use libraries like PySyft, MP-SPDZ, or CrypTen.
     """
 
-    def __init__(self, n_parties: int = 3, modulus: int = 2**31 - 1):
+    def __init__(self, n_parties: int = 3, threshold: int = 2, modulus: int = 2**31 - 1):
         self.n_parties = n_parties
+        self.threshold = threshold
         self.modulus = modulus
         self.shares = {}
 
@@ -264,6 +265,67 @@ class MPCProtocol:
         shares = self.shares[value_id]
         value_int = reconstruct_secret(shares, modulus=self.modulus)
         return value_int / 1000.0
+
+    def secure_joint_optimization_mpc(self, operator1_data: Dict, operator2_data: Dict,
+                                     model_dim: int, learning_rate: float = 0.01,
+                                     n_iterations: int = 5) -> Dict:
+        """
+        Perform secure joint optimization between two operators using MPC.
+
+        Args:
+            operator1_data: First operator's dataset {'X': features, 'y': labels}
+            operator2_data: Second operator's dataset {'X': features, 'y': labels}
+            model_dim: Model dimension
+            learning_rate: Learning rate for optimization
+            n_iterations: Number of optimization iterations
+
+        Returns:
+            Dictionary with optimization results
+
+        Note:
+            This is a simplified demonstration. Full MPC implementation would
+            require specialized libraries and more complex protocols.
+        """
+        # Initialize model
+        model = np.random.randn(model_dim) * 0.1
+
+        # Extract data
+        X1, y1 = operator1_data['X'], operator1_data['y']
+        X2, y2 = operator2_data['X'], operator2_data['y']
+
+        convergence_history = []
+
+        for iteration in range(n_iterations):
+            # Compute local gradients (in practice, would be done in shares)
+            grad1 = compute_gradient(model, {'X': X1, 'y': y1})
+            grad2 = compute_gradient(model, {'X': X2, 'y': y2})
+
+            # Simulate MPC aggregation (simplified)
+            # In reality, gradients would be secret-shared and aggregated securely
+            joint_gradient = (grad1 + grad2) / 2
+
+            # Update model
+            model -= learning_rate * joint_gradient
+
+            # Track convergence
+            loss1 = np.mean((X1 @ model - y1) ** 2)
+            loss2 = np.mean((X2 @ model - y2) ** 2)
+            joint_loss = (loss1 + loss2) / 2
+            convergence_history.append(joint_loss)
+
+        # Check convergence
+        converged = False
+        if len(convergence_history) > 1:
+            recent_improvement = abs(convergence_history[-2] - convergence_history[-1])
+            converged = recent_improvement < 0.001
+
+        return {
+            'final_model': model,
+            'convergence_history': convergence_history,
+            'final_loss': convergence_history[-1] if convergence_history else float('inf'),
+            'converged': converged,
+            'n_iterations': n_iterations
+        }
 
 
 # Example usage and testing

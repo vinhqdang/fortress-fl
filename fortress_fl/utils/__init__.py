@@ -18,6 +18,9 @@ from .evaluation import (
     generate_performance_report
 )
 
+# Import for documentation compatibility
+from ..core.training import generate_synthetic_data, create_federated_datasets
+
 __all__ = [
     'ByzantineAttack',
     'SignFlipAttack',
@@ -30,5 +33,7 @@ __all__ = [
     'evaluate_byzantine_robustness',
     'evaluate_privacy_utility_tradeoff',
     'plot_training_metrics',
-    'generate_performance_report'
+    'generate_performance_report',
+    'generate_synthetic_data',
+    'create_federated_datasets'
 ]
