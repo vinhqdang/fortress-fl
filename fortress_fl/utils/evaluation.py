@@ -573,8 +573,114 @@ if __name__ == "__main__":
         fortress_fl, test_data, byzantine_operators
     )
 
-    print(f"\n📋 Executive Summary:")
-    for key, value in report['executive_summary'].items():
-        print(f"  {key}: {value}")
+def plot_comparative_metrics(results: Dict[str, Dict], metric: str = 'test_loss', 
+                           save_path: str = None, title: str = None, 
+                           ylabel: str = None) -> None:
+    """
+    Plot a specific metric comparing multiple algorithms.
+    
+    Args:
+        results: Dictionary mapping algorithm names to their result dictionaries
+                 (which must contain 'history' or 'metrics')
+        metric: Metric key to plot (e.g., 'test_loss', 'global_model_norm')
+        save_path: Optional path to save plot
+        title: Plot title
+        ylabel: Y-axis label
+    """
+    plt.figure(figsize=(10, 6))
+    
+    markers = ['o', 's', '^', 'd', 'x', '*', 'v', '<']
+    colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'orange']
+    
+    for idx, (algo_name, algo_result) in enumerate(results.items()):
+        history = algo_result.get('history', {})
+        
+        # Handle different metric locations
+        if metric in history:
+            values = history[metric]
+        elif metric == 'test_loss' and 'test_losses' in history:
+            values = history['test_losses']
+        elif metric == 'global_model_norm' and 'global_model_norms' in history:
+            values = history['global_model_norms']
+        else:
+            print(f"Warning: Metric {metric} not found for {algo_name}")
+            continue
+            
+        rounds = range(1, len(values) + 1)
+        marker = markers[idx % len(markers)]
+        color = colors[idx % len(colors)]
+        
+        plt.plot(rounds, values, label=algo_name, marker=marker, 
+                 color=color, linewidth=2, markersize=6, alpha=0.8)
+    
+    plt.title(title or f'Comparative Analysis: {metric}')
+    plt.xlabel('Round')
+    plt.ylabel(ylabel or metric.replace('_', ' ').title())
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        
+    plt.show()
 
-    print("\nFORTRESS-FL evaluation tools test completed!")
+
+def generate_comparative_report(results: Dict[str, Dict], save_path: str = None) -> Dict:
+    """
+    Generate a comparative report summarizing performance of multiple algorithms.
+    
+    Args:
+        results: Dictionary mapping algorithm names to their result dictionaries
+        save_path: Optional path to save report
+        
+    Returns:
+        report: Comparative report dictionary
+    """
+    report = {
+        'algorithms': list(results.keys()),
+        'metrics': {}
+    }
+    
+    # Extract key metrics for each algorithm
+    for algo_name, algo_result in results.items():
+        history = algo_result.get('history', {})
+        
+        # Final test loss
+        final_loss = None
+        if 'test_losses' in history and history['test_losses']:
+            final_loss = history['test_losses'][-1]
+        elif 'test_loss' in history and history['test_loss']:
+            final_loss = history['test_loss'][-1]
+            
+        # Final model norm
+        final_norm = None
+        if 'global_model_norms' in history and history['global_model_norms']:
+            final_norm = history['global_model_norms'][-1]
+            
+        # Convergence rate (simple estimate)
+        convergence_rate = None
+        if 'global_model_norms' in history and len(history['global_model_norms']) > 5:
+            norms = history['global_model_norms']
+            # Change over last 5 rounds
+            convergence_rate = abs(norms[-1] - norms[-5]) / 5
+            
+        report['metrics'][algo_name] = {
+            'final_test_loss': final_loss,
+            'final_model_norm': final_norm,
+            'convergence_rate': convergence_rate
+        }
+        
+    # Determine best performing algorithm
+    losses = {name: m['final_test_loss'] for name, m in report['metrics'].items() 
+              if m['final_test_loss'] is not None}
+    
+    if losses:
+        best_algo = min(losses, key=losses.get)
+        report['best_performing'] = best_algo
+        
+    if save_path:
+        with open(save_path, 'w') as f:
+            json.dump(report, f, indent=2, default=str)
+        print(f"Comparative report saved to {save_path}")
+        
+    return report

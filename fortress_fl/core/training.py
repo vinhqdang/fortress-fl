@@ -14,7 +14,7 @@ def train_fortress_fl(operators_data: List[Dict], n_rounds: int, model_dim: int,
                      learning_rate: float = 0.01, security_param: int = 2048,
                      lambda_rep: float = 0.1, sigma_dp: float = 0.1, epsilon_dp: float = 0.1,
                      byzantine_operators: List[int] = None, test_data: Dict = None,
-                     verbose: bool = True) -> Tuple[np.ndarray, Dict]:
+                     max_grad_norm: float = 1.0, verbose: bool = True) -> Tuple[np.ndarray, Dict]:
     """
     Complete multi-round FORTRESS-FL training.
 
@@ -103,7 +103,8 @@ def train_fortress_fl(operators_data: List[Dict], n_rounds: int, model_dim: int,
             local_gradients.append(gradient)
 
         # ===== FORTRESS-FL AGGREGATION =====
-        result = fortress_fl.train_round(local_gradients, learning_rate)
+        # ===== FORTRESS-FL AGGREGATION =====
+        result = fortress_fl.train_round(local_gradients, learning_rate, max_grad_norm=max_grad_norm)
 
         # ===== EVALUATION =====
         if test_data is not None:

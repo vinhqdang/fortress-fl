@@ -16,7 +16,7 @@ from .reputation import update_reputations, compute_reputation_weights
 def trustchain_aggregation(gradients: List[np.ndarray], commitments: List[int],
                           openings: List[int], reputations: Dict[str, float],
                           operator_ids: List[str], comm_params: Tuple[int, int, int, int],
-                          dp_params: Dict[str, float]) -> Dict:
+                          dp_params: Dict[str, float], max_grad_norm: float = 1.0) -> Dict:
     """
     TrustChain aggregation with cryptographic verification, spectral clustering,
     reputation weighting, and differential privacy.
@@ -80,6 +80,12 @@ def trustchain_aggregation(gradients: List[np.ndarray], commitments: List[int],
         raise ValueError("[TrustChain] ERROR: No valid gradients after verification!")
 
     print(f"[TrustChain] {n_verified}/{n} operators passed verification")
+
+    # Clip gradients to ensure stability
+    for i in range(len(verified_gradients)):
+        grad_norm = np.linalg.norm(verified_gradients[i])
+        if grad_norm > max_grad_norm:
+            verified_gradients[i] = verified_gradients[i] * (max_grad_norm / grad_norm)
 
     # ===== PHASE 2: SPECTRAL CLUSTERING =====
     print(f"[TrustChain] Phase 2: Spectral clustering for Byzantine detection...")
@@ -244,7 +250,7 @@ def adaptive_noise_calibration(gradients: List[np.ndarray], epsilon: float,
     median_norm = np.median(gradient_norms)
 
     # Use median as more robust estimate of typical gradient magnitude
-    sensitivity = max(median_norm, 1.0)  # Avoid zero sensitivity
+    sensitivity = max(median_norm, 1e-4)  # Avoid zero sensitivity
 
     # Gaussian mechanism: sigma = sqrt(2 * log(1.25/delta)) * sensitivity / epsilon
     sigma = np.sqrt(2 * np.log(1.25 / delta)) * sensitivity / epsilon
@@ -335,7 +341,7 @@ class TrustChainAggregator:
         self.byzantine_detection_history = []
 
     def aggregate(self, gradients: List[np.ndarray], commitments: List[int],
-                 openings: List[int], epsilon: float = 0.1) -> Dict:
+                 openings: List[int], epsilon: float = 0.1, max_grad_norm: float = 1.0) -> Dict:
         """
         Perform one round of TrustChain aggregation.
 
@@ -348,17 +354,27 @@ class TrustChainAggregator:
         Returns:
             result: Aggregation result
         """
-        # Adaptive noise calibration
-        sigma = adaptive_noise_calibration(gradients, epsilon)
+        # Clip gradients to ensure stability (before noise calibration)
+        clipped_gradients = []
+        for grad in gradients:
+            grad_norm = np.linalg.norm(grad)
+            if grad_norm > max_grad_norm:
+                clipped_gradients.append(grad * (max_grad_norm / grad_norm))
+            else:
+                clipped_gradients.append(grad)
+        
+        # Adaptive noise calibration using clipped gradients
+        sigma = adaptive_noise_calibration(clipped_gradients, epsilon)
         sigma = max(sigma, self.base_sigma)  # Minimum noise level
 
         dp_params = {'sigma': sigma, 'epsilon': epsilon}
 
-        # Perform aggregation
+        # Perform aggregation using original gradients (verification happens inside)
+        # Note: trustchain_aggregation will clip gradients internally after verification
         result = trustchain_aggregation(
             gradients, commitments, openings,
             self.reputations, self.operator_ids,
-            self.comm_params, dp_params
+            self.comm_params, dp_params, max_grad_norm
         )
 
         # Update internal state

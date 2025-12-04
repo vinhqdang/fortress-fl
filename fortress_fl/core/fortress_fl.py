@@ -81,7 +81,7 @@ class FortressFL:
         print(f"[FORTRESS-FL] Operator IDs: {self.operator_ids}")
 
     def train_round(self, local_gradients: List[np.ndarray],
-                   learning_rate: float = 0.01) -> Dict:
+                   learning_rate: float = 0.01, max_grad_norm: float = 1.0) -> Dict:
         """
         Execute one round of FORTRESS-FL training.
 
@@ -131,7 +131,8 @@ class FortressFL:
         self.total_privacy_budget += current_epsilon
 
         result = self.aggregator.aggregate(
-            local_gradients, commitments, openings, epsilon=current_epsilon
+            local_gradients, commitments, openings, epsilon=current_epsilon,
+            max_grad_norm=max_grad_norm
         )
 
         # ===== STEP 4: UPDATE GLOBAL MODEL =====
