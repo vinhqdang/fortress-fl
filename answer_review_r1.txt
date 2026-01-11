@@ -1,0 +1,63 @@
+Subject: Response to Reviewers for Manuscript [Manuscript ID/Title]
+
+Dear Editor and Reviewers,
+
+We would like to express our sincere gratitude for the time and effort you dedicated to reviewing our manuscript. We found the comments to be extremely constructive and helpful in improving the quality, rigor, and clarity of our work.
+
+We have carefully revised the manuscript to address all the concerns raised. Specifically, we have expanded our experimental evaluation to include targeted backdoor attacks, integrated stronger state-of-the-art baselines (including the suggested FoundationFL), and conducted a comprehensive sensitivity analysis. We have also clarified the system architecture and contributions as requested.
+
+Below is a point-by-point response to the reviewers’ comments.
+
+---
+
+Response to Reviewer #2
+
+Comment 1: The experimental evaluation primarily considers sign flip and noise injection attacks, while more sophisticated and realistic threats such as backdoor attacks are not examined.
+
+Response: We agree that evaluating against targeted attacks is crucial for a comprehensive security assessment.
+- Action: We have implemented a Backdoor Attack scenario where malicious operators inject a trigger pattern to manipulate the global model’s behavior on specific inputs.
+- Result: We added a new experiment measuring the Attack Success Rate (ASR). The results, presented in the new Figure in Section 5.3 ("Defense Against Backdoor Attacks"), demonstrate that FORTRESS-FL effectively suppresses the backdoor trigger (maintaining near 0% ASR) while standard aggregation methods like FedAvg are compromised.
+
+Comment 2: Federated learning is a mature research area... the defenses evaluated in this paper are relatively weak, and the inclusion of more recent and stronger baselines such as [a] would lead to a more thorough and fair comparison.
+
+Response: We appreciate this suggestion to strengthen our comparative analysis.
+- Action: We have significantly expanded our baseline suite to include three state-of-the-art robust aggregation protocols: Centered Clipping, Robust Federated Aggregation (RFA/Geometric Median), and the recently proposed FoundationFL (NDSS 2025).
+- Result: We updated the comparative analysis figure in Section 5.2. The results show that while these advanced baselines perform better than standard methods, FORTRESS-FL’s reputation-weighted TrustChain mechanism achieves superior convergence speed and lower final loss, even against these stronger competitors.
+
+Comment 3: The system is evaluated with a fixed 30% Byzantine ratio. There is no sensitivity analysis showing how performance degrades as the adversarial fraction approaches the theoretical limit, or when adversaries dynamically join and leave the system.
+
+Response: This is an excellent point. Understanding the breaking point of the system is vital for real-world deployment.
+- Action: We conducted a rigorous Sensitivity Analysis varying the Byzantine ratio from 0% to 45%.
+- Result: The new Sensitivity Analysis Figure (Section 5.4) illustrates that FORTRESS-FL remains highly stable up to ~40% adversarial presence, significantly exceeding the standard 30% benchmark. Performance only begins to degrade as the fraction approaches the theoretical majoritarian limit of 50%, confirming the system's robustness in highly volatile dynamic environments where the effective honest majority might fluctuate.
+
+---
+
+Response to Reviewer #3
+
+General Comment: Overall, the paper exhibits clear logic and innovative methodology, making it suitable for publication in this journal.
+
+Response: We thank the reviewer for their positive assessment and encouraging remarks.
+
+Comment 1: Add a diagram: It is recommended to include a system architecture diagram or protocol sequence diagram in Section 4 to clarify the overall workflow for readers.
+
+Response: We agree that a visual representation aids understanding of the multi-phase protocol.
+- Action: We have added a comprehensive System Architecture Diagram in the revised Methodology section (Section 4.1). This diagram visualizes the cyclic workflow between the Coordinator and O-RAN Operators, explicitly mapping the initialization, local training, secure aggregation, and update phases.
+
+Comment 2: Clarify contributions: The authors list four contributions in the introduction. However, the current presentation is somewhat scattered... The authors should strengthen the emphasis on the main contributions.
+
+Response: We acknowledge that the original presentation of contributions could be sharper.
+- Action: We have substantially rewritten the Introduction to explicitly itemize and highlight our four primary contributions: (1) The TrustChain robust aggregation protocol, (2) The integration of Spectral Clustering for advanced filtering, (3) The Secure MPC module for cross-domain optimization, and (4) The thorough empirical evaluation on O-RAN specific data. We have ensured these points are distinct and clearly linked to the technical sections.
+
+Comment 3: Parameter analysis: Since the privacy budget in Figure 1 is set to epsilon=1.0, the authors could analyze the impact of differential privacy parameters on the experimental results.
+
+Response: We agree that analyzing the privacy-utility trade-off is essential for characterizing proper system configuration.
+- Action: We performed a sensitivity analysis on the Privacy Budget (epsilon), varying it from strict (epsilon=0.1) to loose (epsilon=10.0).
+- Result: The new Privacy Sensitivity Figure in Section 5.4 demonstrates the direct correlation between the privacy budget and model utility. It shows that performance stabilizes for epsilon >= 1.0, empirically justifying our default choice of epsilon=1.0 as an optimal balance point for this application.
+
+---
+
+We believe these revisions comprehensively address the reviewers' comments and have significantly strengthened the manuscript. We look forward to your positive response.
+
+Sincerely,
+
+The Authors
