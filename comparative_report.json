@@ -4,34 +4,58 @@
     "Krum",
     "Median",
     "Trimmed_Mean",
-    "FedAvg"
+    "FedAvg",
+    "Centered_Clipping",
+    "RFA",
+    "FoundationFL_Median",
+    "FoundationFL_Trimmed_Mean"
   ],
   "metrics": {
     "FORTRESS-FL": {
-      "final_test_loss": 51.28109383042965,
-      "final_model_norm": 5.300600264878736,
-      "convergence_rate": 0.051473867960665845
+      "final_test_loss": 5.2306380651979545,
+      "final_model_norm": 0.06017108403681918,
+      "convergence_rate": 0.0013558427756717826
     },
     "Krum": {
-      "final_test_loss": 8.794341987019008,
-      "final_model_norm": 0.7905707097930954,
-      "convergence_rate": 0.02858895955309071
+      "final_test_loss": 5.801227273556583,
+      "final_model_norm": 0.506310491828075,
+      "convergence_rate": 0.018701946180193385
     },
     "Median": {
-      "final_test_loss": 9.568281481951233,
-      "final_model_norm": 0.5924732157570218,
-      "convergence_rate": 0.022100362128064467
+      "final_test_loss": 5.728402066191766,
+      "final_model_norm": 0.4977289845577,
+      "convergence_rate": 0.018444178237763
     },
     "Trimmed_Mean": {
-      "final_test_loss": 10.592534090114633,
-      "final_model_norm": 0.20287326238809517,
-      "convergence_rate": 0.007902428654786315
+      "final_test_loss": 5.377694237054673,
+      "final_model_norm": 0.1414217132208327,
+      "convergence_rate": 0.005522811036717426
     },
     "FedAvg": {
-      "final_test_loss": 11.05624479962908,
-      "final_model_norm": 0.09937404813150391,
-      "convergence_rate": 0.00391748451201501
+      "final_test_loss": 5.3008308404366415,
+      "final_model_norm": 0.07999827596550395,
+      "convergence_rate": 0.0031510264033478425
+    },
+    "Centered_Clipping": {
+      "final_test_loss": 5.76730761765008,
+      "final_model_norm": 0.47133052575475753,
+      "convergence_rate": 0.017439381533037555
+    },
+    "RFA": {
+      "final_test_loss": 5.784793638994659,
+      "final_model_norm": 0.4801657136601961,
+      "convergence_rate": 0.01786858683244935
+    },
+    "FoundationFL_Median": {
+      "final_test_loss": 5.770768641206496,
+      "final_model_norm": 1.2262927563992636,
+      "convergence_rate": 0.06049413724760795
+    },
+    "FoundationFL_Trimmed_Mean": {
+      "final_test_loss": 5.015273589694124,
+      "final_model_norm": 0.3795792645008802,
+      "convergence_rate": 0.019255740850531267
     }
   },
-  "best_performing": "Krum"
+  "best_performing": "FoundationFL_Trimmed_Mean"
 }

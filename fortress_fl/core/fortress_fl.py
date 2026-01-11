@@ -194,13 +194,14 @@ class FortressFL:
         """Return complete training history."""
         return self.history.copy()
 
-    def evaluate_model(self, test_data: Dict, loss_function=None) -> Dict:
+    def evaluate_model(self, test_data: Dict, loss_function=None, loss_type='mse') -> Dict:
         """
         Evaluate the global model on test data.
 
         Args:
             test_data: Dict with 'X' (features) and 'y' (targets)
             loss_function: Custom loss function (uses MSE if None)
+            loss_type: 'mse' or 'logistic' (used if loss_function is None)
 
         Returns:
             evaluation: Dict with evaluation metrics
@@ -209,27 +210,49 @@ class FortressFL:
         y = test_data['y']
 
         # Make predictions
-        predictions = X @ self.global_model
+        if loss_type == 'logistic':
+            # Logistic regression prediction (sigmoid)
+            logits = X @ self.global_model
+            predictions = np.where(logits >= 0, 
+                                  1 / (1 + np.exp(-logits)), 
+                                  np.exp(logits) / (1 + np.exp(logits)))
+        else:
+            # Linear regression prediction
+            predictions = X @ self.global_model
 
         # Compute loss
         if loss_function is None:
-            # Default to mean squared error for regression
-            mse = np.mean((predictions - y) ** 2)
-            loss = mse
+            if loss_type == 'logistic':
+                # Log loss (binary cross entropy)
+                epsilon = 1e-15
+                pred_clipped = np.clip(predictions, epsilon, 1 - epsilon)
+                loss = -np.mean(y * np.log(pred_clipped) + (1 - y) * np.log(1 - pred_clipped))
+            else:
+                # Default to mean squared error for regression
+                mse = np.mean((predictions - y) ** 2)
+                loss = mse
         else:
             loss = loss_function(y, predictions)
 
         # Compute additional metrics
         mae = np.mean(np.abs(predictions - y))
-        r2 = 1 - np.sum((y - predictions) ** 2) / np.sum((y - np.mean(y)) ** 2)
-
+        
         evaluation = {
             'loss': loss,
-            'mse': np.mean((predictions - y) ** 2),
             'mae': mae,
-            'r2_score': r2,
             'predictions': predictions
         }
+
+        if loss_type == 'logistic':
+            # Classification metrics
+            pred_labels = (predictions > 0.5).astype(int)
+            accuracy = np.mean(pred_labels == y)
+            evaluation['accuracy'] = accuracy
+        else:
+            # Regression metrics
+            r2 = 1 - np.sum((y - predictions) ** 2) / np.sum((y - np.mean(y)) ** 2)
+            evaluation['r2_score'] = r2
+            evaluation['mse'] = np.mean((predictions - y) ** 2)
 
         return evaluation
 

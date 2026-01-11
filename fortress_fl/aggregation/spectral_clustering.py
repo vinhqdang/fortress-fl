@@ -157,33 +157,43 @@ def identify_byzantine_cluster(S: np.ndarray, cluster_labels: np.ndarray, k: int
             'external_separation': external_separation
         })
 
-    # Byzantine cluster heuristics:
-    # 1. Smaller cluster size (Byzantine operators are minority)
-    # 2. High internal cohesion (coordinated attack)
-    # 3. Low external separation (different from honest operators)
-
-    # Compute suspicion score for each cluster
-    max_size = max(stat['size'] for stat in cluster_stats)
-    suspicion_scores = []
-
+    # Heuristic: Assume Honest Majority
+    # The largest cluster is assumed to be honest.
+    # If clusters are equal size, use other metrics.
+    
+    # Find cluster with maximum size
+    max_size = -1
+    honest_cluster_id = -1
+    
     for stat in cluster_stats:
-        if stat['size'] == 0:
-            suspicion_scores.append(0.0)
-            continue
+        if stat['size'] > max_size:
+            max_size = stat['size']
+            honest_cluster_id = stat['id']
+        elif stat['size'] == max_size:
+            # Tie-breaking: Choose the one with lower internal cohesion 
+            # (assuming attackers might be more tightly coordinated/identical than honest SGD noise)
+            # OR just pick the first one.
+            # Let's use external separation: honest cluster should be 'central'? 
+            # For now, simple size priority is safest for standard FL.
+            pass
 
-        # Normalize metrics
-        size_penalty = 1.0 - (stat['size'] / max_size)  # Smaller clusters get higher penalty
-        cohesion_bonus = max(0.0, stat['internal_cohesion'])  # Higher cohesion increases suspicion
-        separation_penalty = max(0.0, -stat['external_separation'])  # More negative separation increases suspicion
-
-        # Combined suspicion score
-        suspicion = size_penalty * 0.4 + cohesion_bonus * 0.3 + separation_penalty * 0.3
-        suspicion_scores.append(suspicion)
-
-    # Cluster with highest suspicion score is Byzantine
-    byzantine_cluster_id = np.argmax(suspicion_scores)
-
-    return byzantine_cluster_id
+    # The Byzantine cluster is the one that is NOT the honest cluster
+    # (Assuming k=2)
+    # If k > 2, we might need to identify multiple byzantine clusters.
+    # But the calling function expects a single byzantine_cluster_id (or we return list?)
+    # The signature returns int. This implies k=2 or we return the *most* suspicious one.
+    
+    # If k=2, return the id that is != honest_cluster_id
+    for stat in cluster_stats:
+        if stat['id'] != honest_cluster_id:
+            return stat['id']
+            
+    # If only one cluster found (or all same size and logic failed), return -1 or error?
+    # If k=1, no byzantine.
+    if k < 2:
+        return -1
+        
+    return (honest_cluster_id + 1) % k # Fallback for k=2
 
 
 def filter_byzantine_gradients(gradients: List[np.ndarray], cluster_labels: np.ndarray,

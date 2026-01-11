@@ -14,7 +14,9 @@ def train_fortress_fl(operators_data: List[Dict], n_rounds: int, model_dim: int,
                      learning_rate: float = 0.01, security_param: int = 2048,
                      lambda_rep: float = 0.1, sigma_dp: float = 0.1, epsilon_dp: float = 0.1,
                      byzantine_operators: List[int] = None, test_data: Dict = None,
-                     max_grad_norm: float = 1.0, verbose: bool = True) -> Tuple[np.ndarray, Dict]:
+                     max_grad_norm: float = 1.0, verbose: bool = True,
+                     loss_type: str = 'mse',
+                     backdoor_test_data: Dict = None) -> Tuple[np.ndarray, Dict]:
     """
     Complete multi-round FORTRESS-FL training.
 
@@ -72,7 +74,8 @@ def train_fortress_fl(operators_data: List[Dict], n_rounds: int, model_dim: int,
     training_history = {
         'test_losses': [],
         'test_accuracies': [],
-        'byzantine_detection_accuracy': []
+        'byzantine_detection_accuracy': [],
+        'backdoor_asr': []
     }
 
     # Training loop
@@ -88,17 +91,37 @@ def train_fortress_fl(operators_data: List[Dict], n_rounds: int, model_dim: int,
         for op in operators_data:
             if op['is_byzantine']:
                 # Byzantine operator: Generate malicious gradient
-                gradient = generate_byzantine_gradient(
-                    model_dim,
-                    attack_type=op.get('attack_type', 'sign_flip'),
-                    current_model=fortress_fl.get_global_model()
-                )
+                if op.get('attack_type') == 'backdoor':
+                     # Backdoor attack: Standard local training on poisoned data
+                     # The poisoning happened at dataset creation or dataset loading 
+                     # But for this simulation, if we didn't modify the dataset in place, 
+                     # we can do on-the-fly poisoning or assume it's done.
+                     # Let's assume the dataset IS poisoned for these operators.
+                     # If not, we compute gradient on poisoned batch.
+                     X_poison, y_poison = inject_backdoor(op['dataset']['X'], op['dataset']['y'], fraction=0.5)
+                     gradient = compute_local_gradient(
+                        fortress_fl.get_global_model(),
+                        {'X': X_poison, 'y': y_poison},
+                        learning_rate=learning_rate,
+                        loss_type=loss_type
+                    )
+                     # For Model Replacement (scaling boosting), we might scale the update
+                     num_byz = sum(1 for o in operators_data if o['is_byzantine'])
+                     if num_byz > 0:
+                         gradient = gradient * (n_operators / num_byz) # Simple boosting
+                else:
+                    gradient = generate_byzantine_gradient(
+                        model_dim,
+                        attack_type=op.get('attack_type', 'sign_flip'),
+                        current_model=fortress_fl.get_global_model()
+                    )
             else:
                 # Honest operator: Compute true gradient
                 gradient = compute_local_gradient(
                     fortress_fl.get_global_model(),
                     op['dataset'],
-                    learning_rate=learning_rate
+                    learning_rate=learning_rate,
+                    loss_type=loss_type
                 )
             local_gradients.append(gradient)
 
@@ -108,13 +131,22 @@ def train_fortress_fl(operators_data: List[Dict], n_rounds: int, model_dim: int,
 
         # ===== EVALUATION =====
         if test_data is not None:
-            evaluation = fortress_fl.evaluate_model(test_data)
+            evaluation = fortress_fl.evaluate_model(test_data, loss_type=loss_type)
             training_history['test_losses'].append(evaluation['loss'])
-            training_history['test_accuracies'].append(evaluation.get('accuracy', evaluation['r2_score']))
+            training_history['test_accuracies'].append(evaluation.get('accuracy', evaluation.get('r2_score')))
 
             if verbose:
+                metric_name = 'Accuracy' if 'accuracy' in evaluation else 'R²'
+                metric_val = evaluation.get('accuracy', evaluation.get('r2_score', 0.0))
                 print(f"Test evaluation: loss={evaluation['loss']:.4f}, "
-                      f"R²={evaluation['r2_score']:.4f}")
+                      f"{metric_name}={metric_val:.4f}")
+            
+            # Evaluate Backdoor if provided
+            if backdoor_test_data is not None:
+                asr = evaluate_backdoor(fortress_fl.get_global_model(), backdoor_test_data, loss_type)
+                training_history['backdoor_asr'].append(asr)
+                if verbose:
+                    print(f"Backdoor ASR: {asr:.2%}")
 
         # ===== BYZANTINE DETECTION ACCURACY =====
         # Compute detection accuracy if ground truth is available
@@ -140,6 +172,29 @@ def train_fortress_fl(operators_data: List[Dict], n_rounds: int, model_dim: int,
         print(f"Total privacy budget used: {fortress_fl.total_privacy_budget:.3f}")
 
     return final_model, complete_history
+
+    
+def evaluate_backdoor(model: np.ndarray, backdoor_data: Dict, loss_type: str = 'mse') -> float:
+    """
+    Evaluate Attack Success Rate (ASR) on backdoor data.
+    """
+    X = backdoor_data['X']
+    y_target = backdoor_data['y_target']
+    
+    if loss_type == 'mse':
+        # For regression, check if prediction is close to target
+        predictions = X @ model
+        # Success if error is small (e.g. < 1.0)
+        success = np.abs(predictions - y_target) < 1.0
+        return np.mean(success)
+        
+    elif loss_type == 'logistic':
+        # For classification, check if prediction matches target class
+        logits = X @ model
+        preds = (sigmoid(logits) > 0.5).astype(float)
+        return np.mean(preds == y_target)
+        
+    return 0.0
 
 
 def compute_local_gradient(global_model: np.ndarray, local_dataset: Dict,
@@ -267,6 +322,108 @@ def generate_synthetic_data(n_samples: int, n_features: int, noise_std: float = 
     return X, y
 
 
+def inject_backdoor(X: np.ndarray, y: np.ndarray, 
+                   target_label: float = 1.0, 
+                   trigger_value: float = 5.0,
+                   fraction: float = 0.2) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Inject backdoor trigger into data.
+    
+    Trigger: Set first 3 features to trigger_value.
+    Target: Flip label to target_label.
+    
+    Args:
+        X: Feature matrix
+        y: Labels
+        target_label: Target label for backdoored samples
+        trigger_value: Value to set for trigger features
+        fraction: Fraction of samples to poison
+        
+    Returns:
+        (X_poisoned, y_poisoned)
+    """
+    n_samples = len(y)
+    n_poison = int(n_samples * fraction)
+    
+    if n_poison == 0:
+        return X, y
+        
+    # Choose random indices to poison
+    indices = np.random.choice(n_samples, n_poison, replace=False)
+    
+    X_poison = X.copy()
+    y_poison = y.copy()
+    
+    # Apply trigger to selected samples
+    # Simple trigger: Set first 3 features to a large value (or specific pattern)
+    X_poison[indices, :3] = trigger_value
+    
+    # Change label to target
+    y_poison[indices] = target_label
+    
+    return X_poison, y_poison
+
+
+def generate_synthetic_data(n_samples: int, n_features: int, noise_std: float = 0.1,
+                          task_type: str = 'regression',
+                          include_backdoor: bool = False) -> Tuple[np.ndarray, np.ndarray, Optional[Dict]]:
+    """
+    Generate synthetic dataset for testing.
+    
+    Args:
+        n_samples: Number of samples
+        n_features: Number of features
+        noise_std: Standard deviation of noise
+        task_type: 'regression' or 'classification'
+        include_backdoor: Whether to return a separate backdoor test set
+        
+    Returns:
+        (X, y) OR (X, y, backdoor_eval_data) if include_backdoor=True
+    """
+    # Generate random features
+    X = np.random.randn(n_samples, n_features)
+
+    if task_type == 'regression':
+        # Linear regression: y = X @ true_theta + noise
+        true_theta = np.random.randn(n_features)
+        y = X @ true_theta + np.random.normal(0, noise_std, n_samples)
+        
+        # For backdoor in regression, we might target a specific high/low value
+        target_label = 10.0 
+
+    elif task_type == 'classification':
+        # Logistic regression: y = sigmoid(X @ true_theta) + noise > 0.5
+        true_theta = np.random.randn(n_features)
+        logits = X @ true_theta
+        probabilities = sigmoid(logits)
+        y = (probabilities + np.random.normal(0, noise_std, n_samples)) > 0.5
+        y = y.astype(float)
+        
+        target_label = 1.0 # Target class 1
+
+    else:
+        raise ValueError(f"Unsupported task type: {task_type}")
+        
+    if include_backdoor:
+        # Create a dedicated backdoor test set
+        # All samples have trigger, check if model predicts target
+        X_bd = np.random.randn(n_samples // 5, n_features)
+        y_bd_original = np.zeros(n_samples // 5) # Dummy
+        
+        # Inject trigger into ALL samples for evaluation (ASR calculation)
+        X_bd_poisoned, y_bd_target = inject_backdoor(X_bd, y_bd_original, 
+                                                    target_label=target_label,
+                                                    fraction=1.0)
+        
+        backdoor_data = {
+            'X': X_bd_poisoned,
+            'y_target': y_bd_target
+        }
+        return X, y, backdoor_data
+
+    return X, y
+
+
 def sigmoid(x: np.ndarray) -> np.ndarray:
     """Stable sigmoid function."""
     return np.where(x >= 0,
@@ -325,7 +482,13 @@ def create_federated_datasets(n_operators: int, n_samples_per_operator: int,
             'is_byzantine': i in byzantine_operators,
             'attack_type': 'sign_flip' if i in byzantine_operators else None
         }
-
+        
+        # Inject backdoor if specified
+        if operator_data['is_byzantine']:
+             # Simple random choice for attack type distribution if needed, 
+             # but here we allow overriding later or default to sign_flip.
+             pass
+        
         operators_data.append(operator_data)
 
     return operators_data
