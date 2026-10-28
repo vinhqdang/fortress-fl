@@ -113,6 +113,37 @@ def test_certify_symmetric_scores_are_not_revoked():
     assert cert.status != "REVOKED"
 
 
+def test_mlp_gradient_matches_finite_differences():
+    from fortress_fl.unlearning import MLPModel
+    rng = np.random.default_rng(0)
+    m = MLPModel(6, hidden=4)
+    X, y = rng.normal(size=(9, 6)), (rng.random(9) < 0.5).astype(float)
+    th = m.init(1) + 0.1 * rng.normal(size=m.n_params)
+
+    def loss(t):
+        p = 1 / (1 + np.exp(-m.logit(t, X)))
+        return -np.mean(y * np.log(p) + (1 - y) * np.log(1 - p))
+    g = m.grad(th, X, y)
+    for i in rng.choice(m.n_params, 12, replace=False):
+        e = np.zeros(m.n_params); e[i] = 1e-6
+        assert abs((loss(th + e) - loss(th - e)) / 2e-6 - g[i]) < 1e-6
+
+
+def test_mlp_system_unlearns_and_audits():
+    from fortress_fl.unlearning import MLPModel
+    clients, test, info = data.build_federation("synthetic", n_clients=8, n_per_client=20,
+                                                dim=16, seed=3)
+    model = MLPModel(info["dim"], hidden=4)
+    fl = UnlearnableFL(clients, info["dim"], model=model, participation=0.8, seed=3,
+                       security_param=256)
+    fl.train(6)
+    tg = [clients[0]["id"]]
+    out = fl.unlearn(UnlearnRequest("client", client=tg[0]), "subtract_recover",
+                     recover_rounds=2)
+    assert out["theta"].shape == (model.n_params,)
+    assert fl.ledger.audit_exclusion(tg, out["model_hash"])["passed"]
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

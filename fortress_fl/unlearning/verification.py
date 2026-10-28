@@ -4,19 +4,20 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-from .system import _sigmoid
+from .models import sigmoid as _sigmoid
 
 
-def predict_proba(theta, X):
-    return _sigmoid(X @ theta)
+def predict_proba(theta, X, model=None):
+    z = X @ theta if model is None else model.logit(theta, X)
+    return _sigmoid(z)
 
 
-def accuracy(theta, data) -> float:
-    return float(np.mean((predict_proba(theta, data["X"]) > 0.5) == data["y"]))
+def accuracy(theta, data, model=None) -> float:
+    return float(np.mean((predict_proba(theta, data["X"], model) > 0.5) == data["y"]))
 
 
-def per_sample_loss(theta, X, y):
-    p = np.clip(predict_proba(theta, X), 1e-12, 1 - 1e-12)
+def per_sample_loss(theta, X, y, model=None):
+    p = np.clip(predict_proba(theta, X, model), 1e-12, 1 - 1e-12)
     return -(y * np.log(p) + (1 - y) * np.log(1 - p))
 
 
@@ -39,8 +40,8 @@ def mia_auc(theta, forget: Dict, nonmember: Dict) -> float:
     return _auc(-lf, -ln)
 
 
-def backdoor_asr(theta, bd: Dict) -> float:
-    return float(np.mean((predict_proba(theta, bd["X"]) > 0.5) == bd["y_target"]))
+def backdoor_asr(theta, bd: Dict, model=None) -> float:
+    return float(np.mean((predict_proba(theta, bd["X"], model) > 0.5) == bd["y_target"]))
 
 
 def param_gap(theta_u, theta_ref, theta_ref2) -> float:

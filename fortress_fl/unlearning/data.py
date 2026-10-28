@@ -108,3 +108,60 @@ def backdoor_test_set(test: Dict, trigger_value: float = 4.0, target: float = 1.
     X = test["X"][keep].copy()
     X[:, :n_trigger] = trigger_value
     return {"X": X, "y_target": np.full(len(X), target)}
+
+
+def fetch_har(dest: str = "data/har") -> str:
+    """Download and unpack UCI HAR (Anguita et al.) into ``dest``; returns the
+    directory that holds ``train/`` and ``test/``."""
+    import os
+    import urllib.request
+    import zipfile
+    root = os.path.join(dest, "UCI HAR Dataset")
+    if os.path.isdir(root):
+        return root
+    os.makedirs(dest, exist_ok=True)
+    url = ("https://archive.ics.uci.edu/static/public/240/"
+           "human+activity+recognition+using+smartphones.zip")
+    outer = os.path.join(dest, "har.zip")
+    urllib.request.urlretrieve(url, outer)
+    with zipfile.ZipFile(outer) as z:
+        z.extractall(dest)
+    inner = os.path.join(dest, "UCI HAR Dataset.zip")
+    if os.path.exists(inner):
+        with zipfile.ZipFile(inner) as z:
+            z.extractall(dest)
+    return root
+
+
+def har_federation(root: str, n_real: int = 40, seed: int = 0, n_test_per_client: int = 25,
+                   byz_clients: Tuple[int, ...] = (), attack: str = "sign_flip"):
+    """
+    UCI HAR smartphone sensor features, one client per subject (30 clients).
+    Label: 1 = dynamic activity (walking, up/down stairs), 0 = static (sitting,
+    standing, lying). Each device keeps ``n_real`` windows to mimic a small
+    on-device buffer; test windows are held out per subject.
+    """
+    import os
+    def load(split):
+        X = np.loadtxt(os.path.join(root, split, f"X_{split}.txt"))
+        y = np.loadtxt(os.path.join(root, split, f"y_{split}.txt")).astype(int)
+        s = np.loadtxt(os.path.join(root, split, f"subject_{split}.txt")).astype(int)
+        return X, y, s
+    X1, y1, s1 = load("train")
+    X2, y2, s2 = load("test")
+    X, y, subj = np.vstack([X1, X2]), np.concatenate([y1, y2]), np.concatenate([s1, s2])
+    lab = (y <= 3).astype(float)
+    rng = np.random.default_rng(seed)
+    mu, sd = X.mean(0), X.std(0) + 1e-6
+    X = (X - mu) / sd
+    X = np.hstack([X, np.ones((len(X), 1))])
+    clients, Xte, yte, kte = [], [], [], []
+    for i, sid in enumerate(sorted(np.unique(subj))):
+        idx = rng.permutation(np.where(subj == sid)[0])
+        te, tr = idx[:n_test_per_client], idx[n_test_per_client:n_test_per_client + n_real]
+        clients.append({"id": f"C{i:02d}", "X": X[tr], "y": lab[tr], "latent": y[tr],
+                        "byzantine": i in byz_clients,
+                        "attack": attack if i in byz_clients else None})
+        Xte.append(X[te]); yte.append(lab[te]); kte.append(y[te])
+    test = {"X": np.vstack(Xte), "y": np.concatenate(yte), "latent": np.concatenate(kte)}
+    return clients, test, {"dim": X.shape[1]}

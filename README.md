@@ -270,8 +270,9 @@ result = verify_then_escalate(fl, wave, manifests, eps=0.2, alpha=0.05)
 print(result["released"], result["status"], result["cost"]["energy_j"])
 ```
 
-Reproduce the experiments with `python experiments/unlearning_experiments.py`
-(tables in `results/unlearning/`, figures in `figs/`). The manuscript source is in `paper/`.
+Reproduce the experiments with `python experiments/unlearning_experiments.py` (synthetic fleet)
+and `python experiments/unlearning_real.py` (UCI HAR, linear model and MLP; the data are
+downloaded to `data/har` on first use). Tables are in `results/unlearning/`, figures in `figs/`. The manuscript source is in `paper/`.
 Tests: `python tests/test_unlearning.py`.
 
 ## 📁 Project Structure

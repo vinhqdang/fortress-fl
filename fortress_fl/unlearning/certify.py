@@ -13,8 +13,8 @@ from .system import UnlearnableFL, UnlearnRequest
 
 def certify_model(theta: np.ndarray, manifests: Dict, client_ids: Sequence[str],
                   eps: float = 0.2, alpha: float = 0.05, manifest_digest: str = "",
-                  reveal_source: str = "local", seed: Optional[int] = None):
-    diffs = cohort_diffs(theta, manifests, client_ids)
+                  reveal_source: str = "local", seed: Optional[int] = None, model=None):
+    diffs = cohort_diffs(theta, manifests, client_ids, model)
     ver = VouchVerifier(["loss", "margin"], VouchConfig(eps=eps, alpha=alpha),
                         manifest_sha256=manifest_digest)
     cert = ver.run(diffs, shuffle_seed=seed, early_stop=True, reveal_source=reveal_source)
@@ -52,7 +52,7 @@ def verify_then_escalate(fl: UnlearnableFL, clients: Sequence[str], manifests: D
     K = len(ladder)
     req = UnlearnRequest("client", client=clients[0], clients=list(clients))
     spent = {"bytes": 0.0, "flops": 0.0, "energy_j": 0.0, "rounds": 0}
-    base_acc = accuracy(fl.theta, val) if val is not None else None
+    base_acc = accuracy(fl.theta, val, fl.model) if val is not None else None
     attempts = []
     chosen = None
     for i, (m, kw) in enumerate(ladder):
@@ -61,9 +61,8 @@ def verify_then_escalate(fl: UnlearnableFL, clients: Sequence[str], manifests: D
         for k in spent:
             spent[k] += out["cost"].get(k, 0)
         cert, _ = certify_model(out["theta"], manifests, clients, eps, alpha / K,
-                                manifest_digest=digest_array(out["theta"])[:0],
-                                reveal_source=reveal_source, seed=seed)
-        acc = accuracy(out["theta"], val) if val is not None else None
+                                reveal_source=reveal_source, seed=seed, model=fl.model)
+        acc = accuracy(out["theta"], val, fl.model) if val is not None else None
         ok_util = base_acc is None or acc >= base_acc - max_drop
         attempts.append({"method": _label(m, kw), "status": cert.status, "val_acc": acc,
                          "utility_ok": ok_util,

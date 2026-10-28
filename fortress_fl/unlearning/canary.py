@@ -16,7 +16,7 @@ from typing import Dict, List, Sequence
 
 import numpy as np
 
-from .system import _sigmoid
+from .models import sigmoid as _sigmoid
 
 
 def _twin(rng, dim, scale):
@@ -59,18 +59,18 @@ def commit_manifests(manifests: Dict[str, Dict]) -> Dict[str, str]:
     return {cid: m["sha256"] for cid, m in manifests.items()}
 
 
-def _logit(theta, x):
-    return float(x @ theta)
+def _logit(theta, x, model=None):
+    return float(x @ theta) if model is None else float(model.logit(theta, x[None, :])[0])
 
 
-def pair_scores(theta: np.ndarray, pair: Dict) -> Dict[str, float]:
+def pair_scores(theta: np.ndarray, pair: Dict, model=None) -> Dict[str, float]:
     """Score differences D = s(in) - s(ghost) for the declared score class."""
     out = {}
     for name in ("loss", "margin"):
         s = []
         for key in ("in", "ghost"):
             x, y = pair[key]
-            z = _logit(theta, x)
+            z = _logit(theta, x, model)
             if name == "loss":
                 p = float(np.clip(_sigmoid(np.array(z)), 1e-12, 1 - 1e-12))
                 s.append(-(y * np.log(p) + (1 - y) * np.log(1 - p)))
@@ -81,6 +81,6 @@ def pair_scores(theta: np.ndarray, pair: Dict) -> Dict[str, float]:
 
 
 def cohort_diffs(theta: np.ndarray, manifests: Dict[str, Dict],
-                 client_ids: Sequence[str]) -> List[Dict[str, float]]:
-    return [pair_scores(theta, p) for cid in client_ids
+                 client_ids: Sequence[str], model=None) -> List[Dict[str, float]]:
+    return [pair_scores(theta, p, model) for cid in client_ids
             for p in manifests[cid]["pairs"]]

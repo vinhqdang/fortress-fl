@@ -21,6 +21,7 @@ from ..aggregation.spectral_clustering import (
     spectral_clustering_byzantine_detection, compute_similarity_matrix)
 from ..aggregation.reputation import update_reputations
 from .provenance import ProvenanceLedger, ConsentRegistry, digest_array
+from .models import LinearModel
 
 
 def _sigmoid(z):
@@ -44,8 +45,9 @@ class CostModel:
     e_flop_j: float = 1e-9            # joules per floating point operation
     e_bit_j: float = 1e-7             # joules per transmitted/received bit
 
-    def round_cost(self, n_samples: List[int], dim: int):
-        flops = sum(4.0 * n * dim for n in n_samples)          # fwd + bwd, logistic
+    def round_cost(self, n_samples: List[int], dim: int, flops_per_sample: float = None):
+        fps = 4.0 * dim if flops_per_sample is None else flops_per_sample
+        flops = sum(n * fps for n in n_samples)                # fwd + bwd
         up = len(n_samples) * (dim * self.bytes_per_param + self.commitment_bytes)
         down = len(n_samples) * dim * self.bytes_per_param
         bytes_total = up + down
@@ -87,10 +89,12 @@ class UnlearnableFL:
                  participation: float = 1.0, clip: float = 1.0, sigma_dp: float = 0.0,
                  lambda_rep: float = 0.1, penalty: float = 0.2, gate_tau: float = 0.25,
                  comm_params=None, security_param: int = 512, seed: int = 0,
-                 cost_model: Optional[CostModel] = None, store_updates: bool = True):
+                 cost_model: Optional[CostModel] = None, store_updates: bool = True,
+                 model=None):
         self.clients = {c["id"]: c for c in clients}
         self.ids = [c["id"] for c in clients]
-        self.dim = dim
+        self.model = model if model is not None else LinearModel(dim)
+        self.dim = self.model.n_params
         self.lr = lr
         self.participation = participation
         self.clip = clip
@@ -109,7 +113,7 @@ class UnlearnableFL:
 
     # ------------------------------------------------------------------
     def reset(self):
-        self.theta = np.zeros(self.dim)
+        self.theta = self.model.init(self.seed)
         self.reputations = {c: 0.5 for c in self.ids}
         self.round = 0
         self.ledger = ProvenanceLedger()
@@ -137,13 +141,13 @@ class UnlearnableFL:
         c = self.clients[cid]
         X, y = (c["X"], c["y"]) if data_view is None else data_view
         if c.get("byzantine"):
-            g = logistic_gradient(theta, X, y)
+            g = self.model.grad(theta, X, y)
             if c.get("attack") == "sign_flip":
                 g = -2.0 * g
             elif c.get("attack") == "noise":
                 g = np.random.default_rng(self.seed + 7).normal(0, 1.0, self.dim)
         else:
-            g = logistic_gradient(theta, X, y)
+            g = self.model.grad(theta, X, y)
         n = np.linalg.norm(g)
         return g * (self.clip / n) if n > self.clip else g
 
@@ -211,7 +215,7 @@ class UnlearnableFL:
             theta = theta - self.lr * agg
             nsamp = [len(self.clients[c]["y"] if data_override is None or c not in data_override
                          else data_override[c][1]) for c in ids]
-            cost = _add_cost(cost, self.cost.round_cost(nsamp, self.dim))
+            cost = _add_cost(cost, self.cost.round_cost(nsamp, self.dim, self.model.flops_per_sample))
             cost["rounds"] += 1
             if record:
                 self.ledger.log_round(t, phase, ids, [digest_array(g) for g in grads],
@@ -297,7 +301,7 @@ class UnlearnableFL:
                                  digest_array(self.checkpoints[ck][0]), owners)
 
         if method == "retrain":
-            theta0, reps0, start = np.zeros(self.dim), {c: 0.5 for c in self.ids}, 0
+            theta0, reps0, start = self.model.init(self.seed), {c: 0.5 for c in self.ids}, 0
             n = T
         elif method == "rollback":
             theta0, reps0 = self.checkpoints[ck]
