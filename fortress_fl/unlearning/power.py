@@ -64,8 +64,12 @@ class WaveScheduler:
 
 def simulate_scheduler(rate_per_day: float, horizon_days: float, pairs_per_client: int,
                        pairs_needed: int, deadline: float, wave_energy_j: float,
-                       seed: int = 0, margin: float = 1.0) -> Dict:
-    """Poisson arrivals, one decision per day; returns latency and energy statistics."""
+                       seed: int = 0, margin: float = 1.0,
+                       power_target: Optional[int] = None) -> Dict:
+    """Poisson arrivals, one decision per day; returns latency and energy statistics.
+    A wave counts as underpowered when it holds fewer than ``power_target`` pairs
+    (default: ``pairs_needed``), so policies can be compared on one target."""
+    power_target = pairs_needed if power_target is None else power_target
     rng = np.random.default_rng(seed)
     sch = WaveScheduler(pairs_per_client, pairs_needed, deadline, margin)
     t, arrivals = 0.0, []
@@ -87,7 +91,7 @@ def simulate_scheduler(rate_per_day: float, horizon_days: float, pairs_per_clien
         if w:
             waves += 1
             n += len(w)
-            underpowered += (len(w) * pairs_per_client < pairs_needed)
+            underpowered += (len(w) * pairs_per_client < power_target)
             lat += [day - qtimes[c] for c in w]
         day += 1
     return {"requests": n, "waves": waves, "mean_latency": float(np.mean(lat)) if lat else 0.0,

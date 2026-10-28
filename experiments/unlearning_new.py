@@ -166,7 +166,7 @@ def n4(out, quick, wave_energy_j):
         for need, label in ((1, "immediate"), (120, "batched")):
             for s in range(20):
                 r = simulate_scheduler(rate, 365, 6, need, deadline=30, wave_energy_j=wave_energy_j,
-                                       seed=s)
+                                       seed=s, power_target=120)
                 rows.append(dict(rate_per_day=rate, policy=label, seed=s, **r))
     return save(rows, "results/unlearning", "n4_scheduler")
 
