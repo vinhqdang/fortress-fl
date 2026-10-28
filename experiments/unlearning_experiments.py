@@ -138,6 +138,8 @@ def e2_job(args):
         for k in cost:
             cost[k] += o["cost"][k] * len(tg) / n_meas
     r = cert_row(out["theta"], man, tg, cfg, seed, cost, test, "retrain_one_by_one")
+    for k in ("status", "t_stop", "delta_upper", "log_e_cert", "log_e_rev", "acc"):
+        r[k] = np.nan        # cost-only row: no certificate is computed for it
     r["energy_per_client_mj"] = r["energy_mj"] / cfg["W"]
     r["audit_mb"] = audit_bytes(cfg) / 1e6
     rows.append(r)

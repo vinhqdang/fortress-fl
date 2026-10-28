@@ -29,3 +29,7 @@ IEEE policy requires significant extension over prior publications. Reused: the 
 - Reviewers may say the linear-head-on-embeddings setting is small. A neural model would reduce this risk.
 - Canary audits only have power when the model can memorise; the sweep over feature dimension makes this visible.
 - The certificate is per revocation wave, not per client.
+
+## Relation to the author's own work (stated in the paper)
+
+FORTRESS-FL (training-time robust aggregation) and VOUCH (centralised unlearning verifier) are both cited. This paper adds checkpoints and ledger, consent registry, unlearning operators, federated canary protocol with waves, verify-then-escalate with its error accounting, the cost model and the experiments. The e-process verifier and its coverage theorem are reused from VOUCH and not claimed as new.
