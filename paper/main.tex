@@ -189,7 +189,7 @@ Three or eight clients in the wave stamped a trigger on half of their data (rela
 
 
 \subsection{Heterogeneity, participation, noise and capacity}
-Over four factors (5 seeds): The approximate operators were certified more often with stronger heterogeneity (subtract+10: 5, 2 and 3 of 5 runs at $\alpha=0.1,1,10$), lower participation (4, 2 and 3 of 5 at $p=0.3,0.6,1$) and more DP noise (2 and 5 of 5 at $\sigma=0$ and $0.02$). We did not isolate the cause; fewer exposures of a canary and noise on the update both plausibly reduce what the model retains. Accuracy fell with noise (0.98 to 0.94 at $\sigma=0.02$) for every operator. Capacity matters for audit power: at $d=64$ the un-unlearned model was certified in 3 of 5 runs, because the model cannot memorise the canaries, so the advantage really is below $\epsilon$ there; at $d\ge 256$ it was flagged in all runs.
+Over four factors (5 seeds), the approximate operators were certified more often with stronger heterogeneity (subtract+10: 5, 2 and 3 of 5 runs at $\alpha=0.1,1,10$), lower participation (4, 2 and 3 of 5 at $p=0.3,0.6,1$) and more DP noise (2 and 5 of 5 at $\sigma=0$ and $0.02$). We did not isolate the cause; fewer exposures of a canary and noise on the update both plausibly reduce what the model retains. Accuracy fell with noise (0.98 to 0.94 at $\sigma=0.02$) for every operator. Capacity matters for audit power: at $d=64$ the un-unlearned model was certified in 3 of 5 runs, because the model cannot memorise the canaries, so the advantage really is below $\epsilon$ there; at $d\ge 256$ it was flagged in all runs.
 
 
 \subsection{Provenance overhead and tamper detection}
