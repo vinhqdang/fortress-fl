@@ -1,0 +1,70 @@
+\documentclass[journal]{IEEEtran}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage{microtype}
+\renewcommand{\thefigure}{S\arabic{figure}}
+\renewcommand{\thetable}{S\arabic{table}}
+\newcommand{\ours}{FORTRESS-FL}
+
+\begin{document}
+\title{Supplementary Material for\\ ``Certified Federated Unlearning for IoT: Ledger-Anchored Revocation with Anytime-Valid Forgetting Certificates''}
+\author{Quang-Vinh Dang}
+\maketitle
+
+\section{Setup and cost model}
+All experiments are produced by the scripts in the repository (\texttt{experiments/unlearning\_experiments.py}, \texttt{unlearning\_real.py}, \texttt{unlearning\_new.py}); tables below are written from the result files by \texttt{paper/make\_supp\_tables.py}.
+
+\textbf{Training.} Binary logistic loss, full-batch local gradient, update clipping at norm 1, learning rate 1, $T=60$ rounds, participation $p=0.6$ (independent per client and round), reputation rate 0.1 and penalty 0.2, Pedersen commitments with 512-bit group, spectral split gated by a separation margin of 0.25, no differential-privacy noise unless stated. Synthetic fleet: 60 clients, $d=1024$, 12 real records and 6 canary pairs per client, Dirichlet($\alpha{=}1$) over ten latent classes, 8\% label noise. UCI HAR: 30 subjects, 40 records each. N-BaIoT: nine devices, five sites each, 40 records each, features $\operatorname{sign}(x)\log(1+|x|)$ standardised. The MLP has 32 tanh hidden units. Test records are held out per client. Audits use $\epsilon=0.2$, $\alpha=0.05$ and a reveal order drawn from a fixed seed.
+
+\textbf{Cost model.} A client round with $n$ records costs $n\cdot f$ FLOPs ($f=4d$ for the linear model, $6P$ for an MLP with $P$ parameters), uploads $4P+64$ bytes (float32 update and a 512-bit commitment) and downloads $4P$ bytes. Energy is $e_{\rm flop}\cdot\text{FLOPs}+e_{\rm bit}\cdot 8\cdot\text{bytes}$ with $e_{\rm flop}=1$~nJ and $e_{\rm bit}=100$~nJ; these are assumed constants, not measurements. With them radio traffic dominates, so energy follows bytes. Canary reveal sends $2m(d{+}1)\cdot 4$ bytes per revoked client once.
+
+\section{Additional figures}
+\begin{figure}[h]
+\centering
+\includegraphics[width=\columnwidth]{cert_escalation.png}
+\caption{Synthetic fleet, wave of 20 clients (10 seeds): mean client energy (bars, s.d. as error bars) and share of waves certified for the verify-then-escalate ladder, always retraining, always rollback and a fixed subtract+5 policy.}\label{fig:s_esc}
+\end{figure}
+\begin{figure}[h]
+\centering
+\includegraphics[width=\columnwidth]{cert_wave.png}
+\caption{Synthetic fleet: energy per revoked client versus wave size (left; ``one by one'' is measured on three requests and extrapolated) and issue rate of the certificate for the retrained model (right, 5 seeds).}\label{fig:s_wave}
+\end{figure}
+\begin{figure}[h]
+\centering
+\includegraphics[width=\columnwidth]{cert_poison.png}
+\caption{Synthetic fleet, backdoor success rate and test accuracy before and after unlearning, with 3 or 8 poisoned clients in the wave and with 0 or 12 Byzantine sign-flipping clients (5 seeds).}\label{fig:s_poison}
+\end{figure}
+\begin{figure}[h]
+\centering
+\includegraphics[width=\columnwidth]{cert_sweeps.png}
+\caption{Synthetic fleet: upper bound on the residual advantage against the Dirichlet parameter, participation rate, DP noise and feature dimension for the un-unlearned model and three operators (5 seeds). Dashed: $\epsilon=0.2$.}\label{fig:s_sweeps}
+\end{figure}
+\begin{figure*}[h]
+\centering
+\includegraphics[width=0.92\textwidth]{nbaiot_methods.png}
+\caption{N-BaIoT (45 clients, wave of 15, 5 seeds): certificate outcomes and client energy per operator for the linear model and the MLP.}\label{fig:s_nb}
+\end{figure*}
+\begin{figure}[h]
+\centering
+\includegraphics[width=\columnwidth]{nbaiot_per_client.png}
+\caption{N-BaIoT, one revoked client: share of runs in which the retrained model is certified and the un-unlearned model is flagged, against canary pairs per client. The audit has little power at these model sizes.}\label{fig:s_nbpc}
+\end{figure}
+
+\section{Additional tables}
+\input{supp_tables.tex}
+
+\section{Reproduction}
+\begin{verbatim}
+pip install -r requirements.txt
+python experiments/unlearning_experiments.py   # synthetic
+python experiments/unlearning_real.py --dataset har
+python experiments/prepare_nbaiot.py           # once
+python experiments/unlearning_real.py --dataset nbaiot
+python experiments/unlearning_new.py           # ICR, twins, ...
+python experiments/fig_new.py
+python paper/make_supp_tables.py
+python tests/test_unlearning.py
+\end{verbatim}
+\end{document}
