@@ -241,6 +241,39 @@ power_A, power_B = secure_joint_optimization_mpc(
 )
 ```
 
+## 🧹 Federated Unlearning and Model Governance
+
+`fortress_fl/unlearning/` extends FORTRESS-FL with verifiable client revocation.
+
+- **Provenance** (`provenance.py`): hash-chained ledger with a Merkle root over each round's
+  update digests, a consent registry, lineage audit and signed audit certificates.
+- **Unlearning** (`system.py`): per-round checkpoints of model and reputations, and
+  retrain / rollback / update-subtraction / stored-update replay / subtract-and-recover
+  / cohort-sharded strategies, with a communication and energy cost model.
+- **Certification** (`canary.py`, `certify.py`): clients plant paired ghost canaries before
+  training; after a revocation wave an anytime-valid e-process verifier
+  ([VOUCH](https://github.com/vinhqdang/VOUCH-Verifiable-Online-Unlearning-Certification-via-Hypothesis-betting))
+  issues or revokes a forgetting certificate. `verify_then_escalate` tries cheap methods
+  first and releases the first certified, utility-preserving model.
+
+```python
+from fortress_fl.unlearning import (UnlearnableFL, UnlearnRequest, plant_canaries,
+                                    verify_then_escalate, data)
+
+clients, test, info = data.build_federation("synthetic", n_clients=60, n_per_client=12,
+                                            dim=1024)
+manifests = plant_canaries(clients, pairs_per_client=6, dim=info["dim"])
+fl = UnlearnableFL(clients, info["dim"], participation=0.6)
+fl.train(60)
+wave = [c["id"] for c in clients[:20]]
+result = verify_then_escalate(fl, wave, manifests, eps=0.2, alpha=0.05)
+print(result["released"], result["status"], result["cost"]["energy_j"])
+```
+
+Reproduce the experiments with `python experiments/unlearning_experiments.py`
+(tables in `results/unlearning/`, figures in `figs/`). The manuscript source is in `paper/`.
+Tests: `python tests/test_unlearning.py`.
+
 ## 📁 Project Structure
 
 ```
