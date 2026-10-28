@@ -1,0 +1,4 @@
+seed,records,ledger_kb,ledger_bytes_per_round,ledger_over_update_traffic,chain_verify_ms,proof_us,proof_len,proof_ok,tamper_detected,audit_passed,cert_verifies,cert_tamper_detected,false_lineage_rejected,checkpoint_kb,stored_updates_kb
+0,61,94.959,1556.704918032787,0.01073747413412938,1.3709068298339844,4.884600639343262,6,True,1.0,True,True,True,True,703.08,21812.0
+1,61,74.289,1217.8524590163934,0.008587330944399492,1.7211437225341797,4.262328147888184,5,True,1.0,True,True,True,True,17.36,11537.4
+2,61,133.083,2181.688524590164,0.015090315338299827,1.6727447509765625,5.204916000366211,6,True,1.0,True,True,True,True,529.48,12111.4
