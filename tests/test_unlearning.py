@@ -156,6 +156,57 @@ def test_escalation_reports_unpowered_audit():
     assert res["audit_power"] is False and res["status"] != "ISSUED"
 
 
+def test_icr_certifies_exact_and_respects_alpha_split():
+    from fortress_fl.unlearning import incremental_certified_recovery
+    clients, test, info = data.build_federation("synthetic", n_clients=12, n_per_client=12,
+                                                dim=128, seed=5)
+    man = plant_canaries(clients, 6, info["dim"], seed=5)
+    fl = UnlearnableFL(clients, info["dim"], participation=0.8, seed=5, security_param=256)
+    fl.train(20)
+    tg = [c["id"] for c in clients[:6]]
+    r = incremental_certified_recovery(fl, tg, man, eps=0.3, block=4, max_rounds=8, seed=0,
+                                       commit=False)
+    assert r["rounds"] <= 8 and len(r["attempts"]) >= 1
+    assert r["rounds"] == 4 * (len(r["attempts"]) - 1)
+    assert r["cost"]["rounds"] == r["rounds"]
+
+
+def test_entanglement_selection_size():
+    from fortress_fl.unlearning import select_entangled
+    fl, clients, _ = small_system()
+    fl.train(6)
+    tg = [clients[0]["id"], clients[1]["id"]]
+    fl.unlearn(UnlearnRequest("client", client=tg[0], clients=tg), "subtract")
+    sel = select_entangled(fl, tg, 0.5)
+    assert 4 <= len(sel) <= 6 and not set(sel) & set(tg)
+
+
+def test_real_twins_hold_out_ghosts():
+    from fortress_fl.unlearning import plant_real_twins
+    clients, _, _ = data.build_federation("synthetic", n_clients=4, n_per_client=20, dim=8, seed=6)
+    n0 = [len(c["y"]) for c in clients]
+    man = plant_real_twins(clients, 0.5, seed=0)
+    for c, n in zip(clients, n0):
+        pairs = man[c["id"]]["pairs"]
+        assert len(pairs) == int(0.5 * n) // 2
+        assert len(c["y"]) == n - len(pairs)
+        trained = {tuple(x.round(6)) for x in c["X"]}
+        assert all(tuple(p["in"][0].round(6)) in trained for p in pairs)
+        assert all(tuple(p["ghost"][0].round(6)) not in trained for p in pairs)
+
+
+def test_scheduler_batches_until_enough_pairs_or_deadline():
+    from fortress_fl.unlearning import WaveScheduler
+    s = WaveScheduler(pairs_per_client=6, pairs_needed=24, deadline=10, margin=1)
+    for i in range(3):
+        s.submit(float(i), f"R{i}")
+    assert s.due(3.0) is None
+    s.submit(3.0, "R3")
+    assert s.due(3.0) == ["R0", "R1", "R2", "R3"]
+    s.submit(4.0, "R4")
+    assert s.due(12.0) is None and s.due(13.0) == ["R4"]
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

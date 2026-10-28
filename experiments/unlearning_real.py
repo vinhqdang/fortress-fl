@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.dirname(__file__))
 
 from fortress_fl.unlearning import (UnlearnableFL, UnlearnRequest, LinearModel, MLPModel,
-                                    plant_canaries, certify_model, verify_then_escalate, data)
+                                    plant_canaries, plant_real_twins, certify_model, verify_then_escalate, data)
 from fortress_fl.unlearning import verification as V
 from unlearning_experiments import pmap, save
 
@@ -42,16 +42,24 @@ def cfgd(**kw):
 
 
 def build(cfg, seed, poison=0, target=None):
-    n_total = 30 if DS == "har" else 45
+    ds = cfg.get("ds", DS)
+    n_total = {"har": 30, "nbaiot": 45, "synthetic": 60}[ds]
     byz = tuple(range(n_total - cfg["byz"], n_total))
-    if DS == "har":
+    if ds == "har":
         clients, test, info = data.har_federation(data.fetch_har(HAR_DIR), n_real=cfg["n_real"],
                                                   seed=seed, byz_clients=byz)
-    else:
+    elif ds == "nbaiot":
         clients, test, info = data.nbaiot_federation(NB_PATH, n_real=cfg["n_real"], seed=seed,
                                                      byz_clients=byz)
+    else:
+        clients, test, info = data.build_federation("synthetic", n_clients=60, n_per_client=12,
+                                                    dim=1024, alpha=1.0, seed=seed,
+                                                    byz_clients=byz)
     dim = info["dim"]
-    man = plant_canaries(clients, cfg["m"], dim, seed=seed)
+    if cfg.get("canary", "noise") == "real":
+        man = plant_real_twins(clients, pair_fraction=cfg.get("pair_frac", 0.5), seed=seed)
+    else:
+        man = plant_canaries(clients, cfg["m"], dim, seed=seed, scale=cfg.get("scale", 1.0))
     honest = [c["id"] for c in clients if not c["byzantine"]]
     if target is not None:
         tg = [honest[(target + i) % len(honest)] for i in range(cfg["W"])]
