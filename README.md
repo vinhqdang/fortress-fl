@@ -271,8 +271,9 @@ print(result["released"], result["status"], result["cost"]["energy_j"])
 ```
 
 Reproduce the experiments with `python experiments/unlearning_experiments.py` (synthetic fleet)
-and `python experiments/unlearning_real.py` (UCI HAR, linear model and MLP; the data are
-downloaded to `data/har` on first use). Tables are in `results/unlearning/`, figures in `figs/`. The manuscript source is in `paper/`.
+and `python experiments/unlearning_real.py [--dataset har|nbaiot]` (linear model and MLP).
+UCI HAR downloads itself to `data/har`; for N-BaIoT (nine real IoT devices, Mirai and
+BASHLITE traffic) run `python experiments/prepare_nbaiot.py` once. Tables are in `results/unlearning/`, figures in `figs/`. The manuscript source is in `paper/`.
 Tests: `python tests/test_unlearning.py`.
 
 ## 📁 Project Structure

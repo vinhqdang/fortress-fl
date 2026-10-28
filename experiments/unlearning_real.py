@@ -29,6 +29,8 @@ from fortress_fl.unlearning import verification as V
 from unlearning_experiments import pmap, save
 
 HAR_DIR = os.environ.get("HAR_DIR", "data/har")
+NB_PATH = os.environ.get("NBAIOT_NPZ", "data/nbaiot/sample.npz")
+DS = "har"                     # set from --dataset
 BASE = dict(model="linear", n_real=40, m=6, W=10, p=0.6, T=60, lr=1.0, sigma=0.0, eps=0.2,
             byz=0, hidden=32)
 
@@ -40,10 +42,14 @@ def cfgd(**kw):
 
 
 def build(cfg, seed, poison=0, target=None):
-    root = data.fetch_har(HAR_DIR)
-    byz = tuple(range(30 - cfg["byz"], 30))
-    clients, test, info = data.har_federation(root, n_real=cfg["n_real"], seed=seed,
-                                              byz_clients=byz)
+    n_total = 30 if DS == "har" else 45
+    byz = tuple(range(n_total - cfg["byz"], n_total))
+    if DS == "har":
+        clients, test, info = data.har_federation(data.fetch_har(HAR_DIR), n_real=cfg["n_real"],
+                                                  seed=seed, byz_clients=byz)
+    else:
+        clients, test, info = data.nbaiot_federation(NB_PATH, n_real=cfg["n_real"], seed=seed,
+                                                     byz_clients=byz)
     dim = info["dim"]
     man = plant_canaries(clients, cfg["m"], dim, seed=seed)
     honest = [c["id"] for c in clients if not c["byzantine"]]
@@ -100,7 +106,7 @@ def r1_job(args):
 
 def r1(seeds, out, quick):
     jobs = [(cfgd(model=m), s) for m in ("linear", "mlp") for s in seeds]
-    return save(sum(pmap(r1_job, jobs), []), out, "r1_har_methods")
+    return save(sum(pmap(r1_job, jobs), []), out, f"r1_{DS}_methods")
 
 
 # ---------------------------------------------------------------------------
@@ -131,7 +137,7 @@ def r2_job(args):
 
 def r2(seeds, out, quick):
     jobs = [(cfgd(model=m), s) for m in ("linear", "mlp") for s in seeds]
-    return save(sum(pmap(r2_job, jobs), []), out, "r2_har_escalation")
+    return save(sum(pmap(r2_job, jobs), []), out, f"r2_{DS}_escalation")
 
 
 # ---------------------------------------------------------------------------
@@ -146,8 +152,8 @@ def r3_job(args):
 
 
 def r3(seeds, out, quick):
-    return save(sum(pmap(r3_job, [(cfgd(T=30), s) for s in range(20 if quick else 60)]), []),
-                out, "r3_har_calibration")
+    jobs = [(cfgd(T=30, model=m), s) for m in ("linear", "mlp") for s in range(20 if quick else 60)]
+    return save(sum(pmap(r3_job, jobs), []), out, f"r3_{DS}_calibration")
 
 
 # ---------------------------------------------------------------------------
@@ -180,7 +186,7 @@ def r4_job(args):
 
 def r4(seeds, out, quick):
     jobs = [(cfgd(model=m), s, n) for m in ("linear", "mlp") for n in (2, 5) for s in seeds]
-    return save(sum(pmap(r4_job, jobs), []), out, "r4_har_poison")
+    return save(sum(pmap(r4_job, jobs), []), out, f"r4_{DS}_poison")
 
 
 # ---------------------------------------------------------------------------
@@ -214,7 +220,9 @@ def r5(seeds, out, quick):
         jobs += [(cfgd(model="linear", W=1, m=m), s) for s in seeds]
     for m in (10, 20, 40, 60, 100):
         jobs += [(cfgd(model="mlp", W=1, m=m), s) for s in seeds]
-    return save(sum(pmap(r5_job, jobs), []), out, "r5_per_client")
+    for m in (60, 100):       # wider MLP: more capacity for the canaries
+        jobs += [(cfgd(model="mlp", hidden=128, W=1, m=m), s) for s in seeds]
+    return save(sum(pmap(r5_job, jobs), []), out, f"r5_{DS}_per_client")
 
 
 # ---------------------------------------------------------------------------
@@ -225,7 +233,7 @@ def figures(out, figdir):
     plt.rcParams.update({"font.size": 8, "axes.grid": True, "grid.alpha": 0.3})
     R = lambda n: pd.read_csv(os.path.join(out, n + ".csv"))
     col = {"ISSUED": "#2a9d8f", "REVOKED": "#e63946", "UNDETERMINED": "#999999"}
-    d = R("r1_har_methods")
+    d = R(f"r1_{DS}_methods")
     order = ["none", "subtract", "replay", "subtract+5", "subtract+10", "subtract+20", "retrain"]
     fig, ax = plt.subplots(1, 4, figsize=(7.2, 2.4))
     for j, mod in enumerate(("linear", "mlp")):
@@ -237,18 +245,18 @@ def figures(out, figdir):
             if s in cnt:
                 ax[2 * j].bar(range(len(order)), cnt[s] / n, bottom=bottom, color=col[s], label=s)
                 bottom += (cnt[s] / n).values
-        ax[2 * j].set_title(f"HAR, {mod}", fontsize=8)
+        ax[2 * j].set_title(f"{DS.upper()}, {mod}", fontsize=8)
         ax[2 * j].set_ylabel("fraction of runs")
         g = t.groupby("method").energy_mj.mean().reindex(order)
         ax[2 * j + 1].bar(range(len(order)), g.values / 1e3, color="#457b9d")
         ax[2 * j + 1].set_ylabel("client energy (J)")
-        ax[2 * j + 1].set_title(f"HAR, {mod}", fontsize=8)
+        ax[2 * j + 1].set_title(f"{DS.upper()}, {mod}", fontsize=8)
     for a in ax:
         a.set_xticks(range(len(order))); a.set_xticklabels(order, rotation=60, fontsize=5.5)
     ax[0].legend(fontsize=5)
-    fig.tight_layout(); fig.savefig(os.path.join(figdir, "har_methods.png"), dpi=220); plt.close(fig)
+    fig.tight_layout(); fig.savefig(os.path.join(figdir, f"{DS}_methods.png"), dpi=220); plt.close(fig)
 
-    p = R("r5_per_client")
+    p = R(f"r5_{DS}_per_client")
     fig, ax = plt.subplots(1, 2, figsize=(7.2, 2.3))
     for a, mod in zip(ax, ("mlp", "linear")):
         t0 = p[p.model == mod]
@@ -261,21 +269,21 @@ def figures(out, figdir):
             r = t.groupby("m").apply(lambda x: (x.status == "REVOKED").mean(), include_groups=False)
             a.plot(r.index, r.values, ls, marker="s", ms=3, color="#e63946",
                    label=f"no unlearning flagged, $\\epsilon$={eps}")
-        a.set_title(f"HAR, {mod}, one client", fontsize=8)
+        a.set_title(f"{DS.upper()}, {mod}, one client", fontsize=8)
         a.set_xlabel("canary pairs per client $m$"); a.set_ylabel("fraction of runs")
         a.set_ylim(-0.05, 1.05)
     ax[0].legend(fontsize=5)
-    fig.tight_layout(); fig.savefig(os.path.join(figdir, "har_per_client.png"), dpi=220); plt.close(fig)
+    fig.tight_layout(); fig.savefig(os.path.join(figdir, f"{DS}_per_client.png"), dpi=220); plt.close(fig)
 
 
 def summarize(out):
     pd.set_option("display.width", 220, "display.max_columns", 40)
     for n, keys, mets in [
-        ("r1_har_methods", ["model", "method"], ["acc", "delta_upper", "t_stop", "rounds", "energy_mj"]),
-        ("r2_har_escalation", ["model", "policy"], ["acc", "energy_mj", "rounds", "n_attempts"]),
-        ("r3_har_calibration", ["method"], ["delta_upper", "t_stop", "acc"]),
-        ("r4_har_poison", ["model", "n_poison", "method"], ["asr", "acc", "energy_mj"]),
-        ("r5_per_client", ["model", "m", "eps", "method"], ["delta_upper", "acc", "canary_share"]),
+        (f"r1_{DS}_methods", ["model", "method"], ["acc", "delta_upper", "t_stop", "rounds", "energy_mj"]),
+        (f"r2_{DS}_escalation", ["model", "policy"], ["acc", "energy_mj", "rounds", "n_attempts"]),
+        (f"r3_{DS}_calibration", ["model", "method"], ["delta_upper", "t_stop", "acc"]),
+        (f"r4_{DS}_poison", ["model", "n_poison", "method"], ["asr", "acc", "energy_mj"]),
+        (f"r5_{DS}_per_client", ["model", "hidden", "m", "eps", "method"], ["delta_upper", "acc", "canary_share"]),
     ]:
         p = os.path.join(out, n + ".csv")
         if os.path.exists(p):
@@ -292,11 +300,16 @@ if __name__ == "__main__":
     ap.add_argument("--out", default="results/unlearning")
     ap.add_argument("--figs", default="figs")
     ap.add_argument("--only", default="")
+    ap.add_argument("--dataset", default="har", choices=["har", "nbaiot"])
     a = ap.parse_args()
+    DS = a.dataset
+    if DS == "nbaiot":
+        BASE["W"] = 15
     seeds = list(range(2 if a.quick else 5))
     want = lambda n: (not a.only) or n in a.only.split(",")
     t0 = time.time()
-    data.fetch_har(HAR_DIR)
+    if DS == "har":
+        data.fetch_har(HAR_DIR)
     for name, fn, ss in [("r1", r1, seeds), ("r2", r2, seeds), ("r3", r3, seeds),
                          ("r4", r4, seeds), ("r5", r5, seeds)]:
         if want(name):

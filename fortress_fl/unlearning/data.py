@@ -165,3 +165,86 @@ def har_federation(root: str, n_real: int = 40, seed: int = 0, n_test_per_client
         Xte.append(X[te]); yte.append(lab[te]); kte.append(y[te])
     test = {"X": np.vstack(Xte), "y": np.concatenate(yte), "latent": np.concatenate(kte)}
     return clients, test, {"dim": X.shape[1]}
+
+
+NBAIOT_URL = ("https://archive.ics.uci.edu/static/public/442/"
+              "detection+of+iot+botnet+attacks+n+baiot.zip")
+
+
+def prepare_nbaiot(raw_dir: str, out_path: str = "data/nbaiot/sample.npz",
+                   rows_per_file: int = 400, seed: int = 0) -> str:
+    """
+    Sample the N-BaIoT traffic features (Meidan et al., 9 commercial IoT devices
+    infected with Mirai and BASHLITE) into a compact ``.npz``. ``raw_dir`` holds
+    the unpacked UCI archive with one folder per device (benign_traffic.csv and the
+    extracted ``mirai_attacks/`` and ``gafgyt_attacks/`` folders). Up to
+    ``rows_per_file`` rows are drawn uniformly from each CSV.
+    """
+    import glob
+    import os
+    rng = np.random.default_rng(seed)
+    devices = sorted(d for d in os.listdir(raw_dir) if os.path.isdir(os.path.join(raw_dir, d)))
+    X, y, dev, kind = [], [], [], []
+    kinds = {}
+    for di, d in enumerate(devices):
+        files = [(os.path.join(raw_dir, d, "benign_traffic.csv"), 0, "benign")]
+        for fam in ("mirai_attacks", "gafgyt_attacks"):
+            for f in sorted(glob.glob(os.path.join(raw_dir, d, fam, "*.csv"))):
+                files.append((f, 1, f"{fam.split('_')[0]}_{os.path.basename(f)[:-4]}"))
+        for path, lab, kname in files:
+            n = sum(1 for _ in open(path)) - 1
+            keep = np.sort(rng.choice(n, size=min(rows_per_file, n), replace=False))
+            skip = np.setdiff1d(np.arange(1, n + 1), keep + 1)
+            import pandas as pd
+            part = pd.read_csv(path, skiprows=skip).to_numpy(dtype=np.float32)
+            X.append(part); y.append(np.full(len(part), lab)); dev.append(np.full(len(part), di))
+            k = kinds.setdefault(kname, len(kinds))
+            kind.append(np.full(len(part), k))
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    np.savez_compressed(out_path, X=np.vstack(X), y=np.concatenate(y), dev=np.concatenate(dev),
+                        kind=np.concatenate(kind), devices=np.array(devices),
+                        kinds=np.array(list(kinds)))
+    return out_path
+
+
+def nbaiot_federation(path: str, sites_per_device: int = 5, n_real: int = 40, seed: int = 0,
+                      n_test_per_client: int = 24, byz_clients: Tuple[int, ...] = (),
+                      attack: str = "sign_flip"):
+    """
+    N-BaIoT botnet detection (benign vs attack) with one client per monitored site:
+    each of the 9 devices is split into ``sites_per_device`` clients holding disjoint
+    random subsets of that device's traffic, so clients of different device types are
+    non-IID (different traffic, different attack families). Every client keeps
+    ``n_real`` rows, half benign and half attack; test rows are balanced and held out.
+    """
+    z = np.load(path)
+    X, y, dev, kind = z["X"], z["y"], z["dev"], z["kind"]
+    X = np.sign(X) * np.log1p(np.abs(X))          # heavy-tailed traffic statistics
+    mu, sd = X.mean(0), X.std(0) + 1e-6
+    X = (X - mu) / sd
+    X = np.hstack([X, np.ones((len(X), 1), dtype=X.dtype)]).astype(np.float64)
+    rng = np.random.default_rng(seed)
+    clients, Xte, yte, kte = [], [], [], []
+    k = 0
+    for d in np.unique(dev):
+        pools = []
+        for lab in (0, 1):
+            idx = rng.permutation(np.where((dev == d) & (y == lab))[0])
+            pools.append(np.array_split(idx, sites_per_device))
+        for s in range(sites_per_device):
+            half = n_real // 2
+            tr, te = [], []
+            for lab in (0, 1):
+                p = pools[lab][s]
+                n_te = n_test_per_client // 2
+                te.append(p[:n_te])
+                tr.append(p[n_te:n_te + half])
+            tr, te = np.concatenate(tr), np.concatenate(te)
+            clients.append({"id": f"C{k:02d}", "X": X[tr], "y": y[tr].astype(float),
+                            "latent": kind[tr], "device": int(d),
+                            "byzantine": k in byz_clients,
+                            "attack": attack if k in byz_clients else None})
+            Xte.append(X[te]); yte.append(y[te].astype(float)); kte.append(kind[te])
+            k += 1
+    test = {"X": np.vstack(Xte), "y": np.concatenate(yte), "latent": np.concatenate(kte)}
+    return clients, test, {"dim": X.shape[1]}

@@ -144,6 +144,18 @@ def test_mlp_system_unlearns_and_audits():
     assert fl.ledger.audit_exclusion(tg, out["model_hash"])["passed"]
 
 
+def test_escalation_reports_unpowered_audit():
+    from fortress_fl.unlearning import verify_then_escalate
+    clients, test, info = data.build_federation("synthetic", n_clients=8, n_per_client=20,
+                                                dim=8, seed=4)
+    man = plant_canaries(clients, 3, info["dim"], seed=4)
+    fl = UnlearnableFL(clients, info["dim"], participation=1.0, seed=4, security_param=256)
+    fl.train(4)
+    tg = [c["id"] for c in clients[:4]]
+    res = verify_then_escalate(fl, tg, man, eps=0.3, reveal_source="seeded", seed=0)
+    assert res["audit_power"] is False and res["status"] != "ISSUED"
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
