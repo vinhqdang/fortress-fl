@@ -35,7 +35,7 @@ Federated unlearning, model governance, provenance, anytime-valid inference, Byz
 
 Federated unlearning removes a client's influence without full retraining~\cite{liu2021federaser,halimi2022,wu2022kd,liu2024survey,romandini2024}. Two problems remain for deployment. First, the operator has to \emph{show} that the influence is gone. Cryptographic proofs of unlearning exist for centralised models~\cite{eisenhofer2025}; in federated settings, existing checks mark the leaving client's data with backdoor-style markers~\cite{gao2024verifi}, use fingerprints~\cite{goswami2026} (whose paper gives no test or error bound), or log unlearning requests and actions on a blockchain~\cite{zuo2024}, while BlockFUL addresses how to unlearn on linked chains and not how to test the result~\cite{blockful2024}; a recent conceptual framework paper sets out entities, goals and metrics for verifiable federated unlearning~\cite{nguyen2026}. Second, verification is almost never tied to cost: an operator who must pay for a certificate has little reason to choose a cheap method unless the certificate tells them whether it was enough, and the honest comparison is with retraining that stops when the model has converged, not with a fixed number of rounds.
 
-We address both problems in one system built on the \ours{} robust aggregation pipeline~\cite{dang2025fortress} and on the paired-canary verifier VOUCH~\cite{dang2026vouch}. Our contributions are:
+We address both problems in one system built on the \ours{} robust aggregation pipeline~\cite{dang2026fortress} and on the paired-canary verifier VOUCH~\cite{dang2026vouch}. Our contributions are:
 \begin{enumerate}
 \item \textbf{Ledger-anchored revocation.} A hash-chained provenance ledger with Merkle roots over client updates, a consent registry, and per-round checkpoints of the model \emph{and} of the reputation state. The chain head is published to independent witnesses and certificates are signed with Ed25519, so an operator that rewrites and re-links its own chain is caught.
 \item \textbf{Federated paired-canary certificates.} Clients plant paired ghost canaries before training and commit to them in the ledger; after a revocation wave an anytime-valid e-process verifier~\cite{dang2026vouch} issues or withholds an $(\epsilon,\alpha)$ certificate without retrained references or backdoor markers. A strict reveal rule scores unopened pairs as extreme, so selective disclosure cannot buy a certificate.
@@ -46,7 +46,7 @@ We address both problems in one system built on the \ours{} robust aggregation p
 
 \subsection*{What is new relative to \ours{} and VOUCH}
 This paper builds on two earlier works by the same author, and we state precisely what it adds.
-\emph{\ours{}}~\cite{dang2025fortress} is a training-time system: Pedersen-committed updates, spectral Byzantine detection, reputation-weighted aggregation and Gaussian noise. It has no notion of removing a client after training, keeps no per-round state, and offers no audit. \emph{VOUCH}~\cite{dang2026vouch} is a verifier for centralised (language-model) unlearning: it assumes a single trained model and a forget set, and certifies it with paired canaries and e-processes. It has no federated protocol, no client revocation, no unlearning operators, and no cost model.
+\emph{\ours{}}~\cite{dang2026fortress} is a training-time system: Pedersen-committed updates, spectral Byzantine detection, reputation-weighted aggregation and Gaussian noise. It has no notion of removing a client after training, keeps no per-round state, and offers no audit. \emph{VOUCH}~\cite{dang2026vouch} is a verifier for centralised (language-model) unlearning: it assumes a single trained model and a forget set, and certifies it with paired canaries and e-processes. It has no federated protocol, no client revocation, no unlearning operators, and no cost model.
 Table~\ref{tab:delta} lists what each contributes and what is added here. The new elements are: (i) checkpointing of model \emph{and} reputation state, the ledger, the consent registry and the unlearning operators on top of \ours{}; (ii) a federated canary protocol in which clients hold and commit their own pairs and certificates are issued per revocation wave under partial participation; (iii) incremental certified recovery, entanglement-targeted recovery and the verify-then-escalate ladder, with their error accounting (Theorems~\ref{thm:esc} and~\ref{thm:icr}); (iv) the real-record twin audit, the power check and canary calibration, and the wave scheduler; (v) the energy and traffic model; and (vi) experiments on three data sets, two models, and baselines. The e-process verifier and its coverage theorem are used unchanged from VOUCH and are not claimed as new.
 
 \begin{table}[t]
@@ -55,7 +55,7 @@ Table~\ref{tab:delta} lists what each contributes and what is added here. The ne
 \footnotesize
 \begin{tabular}{@{}p{1.9cm}p{1.9cm}p{1.9cm}p{1.9cm}@{}}
 \toprule
- & \ours{}~\cite{dang2025fortress} & VOUCH~\cite{dang2026vouch} & This paper \\
+ & \ours{}~\cite{dang2026fortress} & VOUCH~\cite{dang2026vouch} & This paper \\
 \midrule
 Setting & federated training & centralised LMs & federated, IoT \\
 Byzantine robust & yes & n/a & inherited, tested during unlearning \\

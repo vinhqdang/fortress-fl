@@ -313,11 +313,16 @@ FORTRESS-FL implements state-of-the-art techniques from:
 If you use FORTRESS-FL in your research, please cite:
 
 ```bibtex
-@software{fortress_fl_2024,
-  title={FORTRESS-FL: Byzantine-Robust Federated Learning for Network Orchestration},
-  author={FORTRESS-FL Team},
-  year={2024},
-  url={https://github.com/your-org/fortress-fl}
+@article{dang2026fortress,
+  author  = {Dang, Quang-Vinh and Vo, Thi-Bich-Diem and Nguyen, Ngoc-Son-An},
+  title   = {{FORTRESS-FL}: Byzantine-robust and privacy-preserving federated
+             orchestration for next-generation networks},
+  journal = {Array},
+  volume  = {29},
+  pages   = {100680},
+  year    = {2026},
+  publisher = {Elsevier},
+  doi     = {10.1016/j.array.2026.100680}
 }
 ```
 
