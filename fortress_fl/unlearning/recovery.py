@@ -9,6 +9,7 @@ Recovery algorithms that use the provenance ledger's stored updates.
 """
 
 import copy
+from collections import Counter
 from typing import Dict, List, Optional, Sequence
 
 import numpy as np
@@ -111,10 +112,60 @@ def incremental_certified_recovery(fl: UnlearnableFL, wave: Sequence[str], manif
     status = attempts[-1]["status"] if attempts[-1]["utility_ok"] else "UTILITY_REJECTED"
     if require_power and not audit_power and status == "ISSUED":
         status = "UNPOWERED"
+    part = participation_counts(f, T)
     f.theta, f.reputations, f.round = theta.copy(), dict(reps), T + done
     f.ledger.log_release(digest_array(theta), "icr")
     if commit:
         fl.__dict__.update(f.__dict__)
     return {"status": status, "theta": theta, "cost": cost, "rounds": done,
             "attempts": attempts, "audit_power": audit_power, "targeted": q < 1.0,
-            "model_hash": digest_array(theta), "n_recovery_clients": len(active)}
+            "model_hash": digest_array(theta), "n_recovery_clients": len(active),
+            "participation": part}
+
+
+def participation_counts(f: UnlearnableFL, after_round: int = 0) -> Dict[str, int]:
+    """Rounds each client uploaded an update in recovery-phase ledger records."""
+    c = Counter()
+    for rec in f.ledger.records:
+        if rec["event"] == "round" and rec["phase"] == "recover" and rec["round"] > after_round:
+            c.update(rec["participants"])
+    return dict(c)
+
+
+def device_energy_j(f: UnlearnableFL, counts: Dict[str, int]) -> Dict[str, float]:
+    """Per-device energy of the counted rounds under the system's cost model."""
+    out = {}
+    for cid, n in counts.items():
+        n_rec = len(f.clients[cid]["y"])
+        out[cid] = n * f.cost.round_cost([n_rec], f.dim, f.model.flops_per_sample)["energy_j"]
+    return out
+
+
+def early_stopped_retrain(fl: UnlearnableFL, wave: Sequence[str], val: Dict, tol: float = 0.005,
+                          block: int = 5, max_rounds: int = 60, seed_offset: int = 1) -> Dict:
+    """
+    A stronger retraining baseline: restart from the initial model on the retained
+    clients and stop as soon as validation accuracy is within ``tol`` of the accuracy
+    of the model before unlearning (checked every ``block`` rounds). Retraining for a
+    fixed T rounds over-provisions when the task converges early.
+    """
+    f = copy.deepcopy(fl)
+    wave = list(wave)
+    for w in wave:
+        f.consent.revoke(w, {"kind": "client"}, f.round)
+    target = accuracy(fl.theta, val, fl.model) - tol
+    theta, reps = f.model.init(f.seed), {c: 0.5 for c in f.ids}
+    active = f.consent.active_clients()
+    cost = {"bytes": 0.0, "flops": 0.0, "energy_j": 0.0, "rounds": 0}
+    done = 0
+    while done < max_rounds:
+        theta, reps, c = f._run_rounds(theta, reps, done, block, active, "recover",
+                                       f.seed + seed_offset)
+        for k in cost:
+            cost[k] += c.get(k, 0)
+        done += block
+        if accuracy(theta, val, f.model) >= target:
+            break
+    f.theta, f.reputations = theta.copy(), dict(reps)
+    return {"theta": theta, "cost": cost, "rounds": done, "state": f,
+            "participation": participation_counts(f, 0)}

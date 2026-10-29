@@ -90,13 +90,17 @@ class UnlearnableFL:
                  lambda_rep: float = 0.1, penalty: float = 0.2, gate_tau: float = 0.25,
                  comm_params=None, security_param: int = 512, seed: int = 0,
                  cost_model: Optional[CostModel] = None, store_updates: bool = True,
-                 model=None):
+                 model=None, dropout: float = 0.0, max_staleness: int = 0,
+                 join_round: Optional[Dict[str, int]] = None):
         self.clients = {c["id"]: c for c in clients}
         self.ids = [c["id"] for c in clients]
         self.model = model if model is not None else LinearModel(dim)
         self.dim = self.model.n_params
         self.lr = lr
-        self.participation = participation
+        self.participation = participation      # float, or dict client -> probability
+        self.join_round = join_round or {}      # client -> first round it may take part in
+        self.dropout = dropout                  # selected client fails before uploading
+        self.max_staleness = max_staleness      # asynchronous: gradient at a model up to S rounds old
         self.clip = clip
         self.sigma_dp = sigma_dp
         self.lambda_rep = lambda_rep
@@ -130,9 +134,16 @@ class UnlearnableFL:
         not change who else participates."""
         out = []
         for c in active:
+            if t < self.join_round.get(c, 0):
+                continue
             h = np.random.default_rng([seed, t, zlib.crc32(c.encode())])
-            if self.participation >= 1.0 or h.random() < self.participation:
+            p = self.participation[c] if isinstance(self.participation, dict) else self.participation
+            if p >= 1.0 or h.random() < p:
                 out.append(c)
+        if self.dropout > 0 and len(out) > 3:
+            kept = [c for c in out
+                    if np.random.default_rng([seed, t, zlib.crc32(c.encode()), 7]).random() >= self.dropout]
+            out = kept if len(kept) >= 3 else out[:3]
         if len(out) < 3:   # fall back so clustering is defined
             out = list(active)[:max(3, len(out))]
         return out
@@ -204,15 +215,26 @@ class UnlearnableFL:
     def _run_rounds(self, theta, reps, start, n_rounds, active, phase, seed,
                     data_override=None, record=True):
         cost = _empty_cost()
+        hist = [theta]
         for k in range(n_rounds):
             t = start + k + 1
             ids = self._participants(t, active, seed)
+
+            def stale_model(c):
+                if self.max_staleness <= 0:
+                    return theta
+                s_ = int(np.random.default_rng([seed, t, zlib.crc32(c.encode()), 99])
+                         .integers(0, self.max_staleness + 1))
+                return hist[max(0, len(hist) - 1 - s_)]
             grads = [self._local_update(
-                c, theta, None if data_override is None else data_override.get(c))
+                c, stale_model(c), None if data_override is None else data_override.get(c))
                 for c in ids]
             agg, reps, weights, flagged = self._aggregate(
                 ids, grads, theta, reps, t, noise_seed=seed * 100003 + t)
             theta = theta - self.lr * agg
+            hist.append(theta)
+            if len(hist) > self.max_staleness + 1:
+                hist.pop(0)
             nsamp = [len(self.clients[c]["y"] if data_override is None or c not in data_override
                          else data_override[c][1]) for c in ids]
             cost = _add_cost(cost, self.cost.round_cost(nsamp, self.dim, self.model.flops_per_sample))
@@ -411,3 +433,17 @@ class ShardedFL:
         self.n_samples[i] -= len(self.shards[i].clients[client]["y"])
         res["theta"] = self.theta
         return res
+
+    def unlearn_wave(self, clients: List[str], seed_offset: int = 1) -> Dict:
+        """Retrain every shard that holds a member of the wave (others are untouched)."""
+        groups: Dict[int, List[str]] = {}
+        for c in clients:
+            groups.setdefault(self.owner[c], []).append(c)
+        cost = {"bytes": 0.0, "flops": 0.0, "energy_j": 0.0, "rounds": 0}
+        for i, grp in groups.items():
+            res = self.shards[i].unlearn(UnlearnRequest("client", client=grp[0], clients=grp),
+                                         "retrain", seed_offset=seed_offset)
+            for k in cost:
+                cost[k] += res["cost"].get(k, 0)
+            self.n_samples[i] -= sum(len(self.shards[i].clients[c]["y"]) for c in grp)
+        return {"theta": self.theta, "cost": cost, "shards_touched": len(groups)}

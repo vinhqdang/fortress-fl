@@ -25,8 +25,17 @@ def _twin(rng, dim, scale):
     return x, float(rng.random() < 0.5)
 
 
+def _twin_crossover(rng, X):
+    """Features mixed per coordinate from two random real records, random label:
+    in-distribution canaries that an outlier detector cannot single out."""
+    a, b = X[rng.integers(len(X))], X[rng.integers(len(X))]
+    x = np.where(rng.random(len(a)) < 0.5, a, b).astype(float)
+    x[-1] = 1.0
+    return x, float(rng.random() < 0.5)
+
+
 def plant_canaries(clients: List[Dict], pairs_per_client: int, dim: int,
-                   seed: int = 0, scale: float = 1.0) -> Dict[str, Dict]:
+                   seed: int = 0, scale: float = 1.0, kind: str = "gaussian") -> Dict[str, Dict]:
     """
     Append the in-twin of every pair to its client's data and return the
     per-client manifests (kept by the client; only their digest is published).
@@ -36,9 +45,14 @@ def plant_canaries(clients: List[Dict], pairs_per_client: int, dim: int,
         rng = np.random.default_rng([seed, int(c["id"][1:])])
         pairs = []
         Xin, yin = [], []
+        real_X = c["X"].copy()
         for _ in range(pairs_per_client):
-            a = _twin(rng, dim, scale)
-            b = _twin(rng, dim, scale)
+            if kind == "crossover":
+                a = _twin_crossover(rng, real_X)
+                b = _twin_crossover(rng, real_X)
+            else:
+                a = _twin(rng, dim, scale)
+                b = _twin(rng, dim, scale)
             coin = int(rng.random() < 0.5)
             inn, gho = (a, b) if coin == 0 else (b, a)
             pairs.append({"in": (inn[0], inn[1]), "ghost": (gho[0], gho[1])})
@@ -81,6 +95,24 @@ def pair_scores(theta: np.ndarray, pair: Dict, model=None) -> Dict[str, float]:
 
 
 def cohort_diffs(theta: np.ndarray, manifests: Dict[str, Dict],
-                 client_ids: Sequence[str], model=None) -> List[Dict[str, float]]:
-    return [pair_scores(theta, p, model) for cid in client_ids
-            for p in manifests[cid]["pairs"]]
+                 client_ids: Sequence[str], model=None,
+                 revealed: Dict[str, Sequence[int]] = None, missing: str = "worst"
+                 ) -> List[Dict[str, float]]:
+    """
+    Score differences for the committed cohort. ``revealed`` lists, per client, the
+    indices of pairs the client actually opened. A committed pair that is not opened
+    is scored as the worst case (the in-twin looks memorised, D>0) when
+    ``missing="worst"``, so withholding ghosts can only hurt the revoking client; with
+    ``missing="drop"`` it is skipped, which is exploitable (see the cherry-pick attack).
+    """
+    out = []
+    for cid in client_ids:
+        pairs = manifests[cid]["pairs"]
+        idx = range(len(pairs)) if revealed is None else revealed.get(cid, [])
+        shown = set(idx)
+        for i, p in enumerate(pairs):
+            if i in shown:
+                out.append(pair_scores(theta, p, model))
+            elif missing == "worst":
+                out.append({"loss": 1e6, "margin": 1e6})
+    return out

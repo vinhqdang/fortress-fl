@@ -59,7 +59,8 @@ def build(cfg, seed, poison=0, target=None):
     if cfg.get("canary", "noise") == "real":
         man = plant_real_twins(clients, pair_fraction=cfg.get("pair_frac", 0.5), seed=seed)
     else:
-        man = plant_canaries(clients, cfg["m"], dim, seed=seed, scale=cfg.get("scale", 1.0))
+        man = plant_canaries(clients, cfg["m"], dim, seed=seed, scale=cfg.get("scale", 1.0),
+                             kind=cfg.get("ckind", "gaussian"))
     honest = [c["id"] for c in clients if not c["byzantine"]]
     if target is not None:
         tg = [honest[(target + i) % len(honest)] for i in range(cfg["W"])]
@@ -72,7 +73,13 @@ def build(cfg, seed, poison=0, target=None):
                 data.add_backdoor(c, 0.5, seed=seed)
         bd = data.backdoor_test_set(test)
     model = LinearModel(dim) if cfg["model"] == "linear" else MLPModel(dim, cfg["hidden"])
+    join = None
+    if cfg.get("join"):      # staggered enrolment: low-index clients join last
+        n = len(clients)
+        join = {c["id"]: int(cfg["join"] * (n - 1 - i) / max(1, n - 1)) for i, c in enumerate(clients)}
     fl = UnlearnableFL(clients, dim, model=model, lr=cfg["lr"], participation=cfg["p"],
+                       dropout=cfg.get("dropout", 0.0), max_staleness=cfg.get("stale", 0),
+                       join_round=join,
                        sigma_dp=cfg["sigma"], seed=seed)
     fl.train(cfg["T"])
     return fl, clients, test, man, tg, bd, model

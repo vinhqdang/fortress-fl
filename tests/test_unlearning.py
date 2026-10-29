@@ -207,6 +207,70 @@ def test_scheduler_batches_until_enough_pairs_or_deadline():
     assert s.due(12.0) is None and s.due(13.0) == ["R4"]
 
 
+def test_anchor_detects_relinked_rewrite_and_signatures():
+    import copy
+    from fortress_fl.unlearning.anchor import (Witness, LedgerAnchor, verify_against_witnesses,
+                                               generate_keypair, sign_certificate_ed25519,
+                                               verify_certificate_ed25519)
+    fl, _, _ = small_system()
+    fl.train(10)
+    ws = [Witness("A"), Witness("B")]
+    an = LedgerAnchor(ws, interval=3)
+    an.maybe_publish(fl.ledger, force=True)
+    assert verify_against_witnesses(fl.ledger, ws)["passed"]
+    g = copy.deepcopy(fl.ledger)
+    g.records[2]["flagged"] = ["Cxx"]
+    prev = g.records[1]["hash"]
+    for r in g.records[2:]:
+        r["prev"] = prev
+        r["hash"] = g._record_hash({k: v for k, v in r.items() if k != "hash"})
+        prev = r["hash"]
+    assert g.verify_chain() and not verify_against_witnesses(g, ws)["passed"]
+    sk, pk = generate_keypair()
+    c = sign_certificate_ed25519({"s": "ISSUED"}, sk)
+    assert verify_certificate_ed25519(c, pk)
+    c["body"]["s"] = "REVOKED"
+    assert not verify_certificate_ed25519(c, pk)
+
+
+def test_dropout_staleness_and_enrolment():
+    clients, test, info = data.build_federation("synthetic", n_clients=10, n_per_client=20, dim=16, seed=7)
+    jr = {c["id"]: (0 if i < 5 else 6) for i, c in enumerate(clients)}
+    fl = UnlearnableFL(clients, info["dim"], participation=0.9, dropout=0.4, max_staleness=2,
+                       join_round=jr, seed=7, security_param=256)
+    fl.train(8)
+    assert all(np.isfinite(fl.theta))
+    late = clients[9]["id"]
+    first = fl.ledger.first_participation(late)
+    assert first is None or first >= 7
+
+
+def test_crossover_canaries_and_strict_reveal():
+    clients, _, info = data.build_federation("synthetic", n_clients=4, n_per_client=20, dim=12, seed=8)
+    man = plant_canaries(clients, 5, info["dim"], seed=8, kind="crossover")
+    from fortress_fl.unlearning import cohort_diffs
+    th = np.zeros(info["dim"])
+    ids = [c["id"] for c in clients[:2]]
+    assert len(cohort_diffs(th, man, ids)) == 10
+    assert len(cohort_diffs(th, man, ids, revealed={ids[0]: [0], ids[1]: []}, missing="drop")) == 1
+    worst = cohort_diffs(th, man, ids, revealed={ids[0]: [0], ids[1]: []}, missing="worst")
+    assert len(worst) == 10 and sum(d["loss"] > 1e5 for d in worst) == 9
+
+
+def test_early_stopped_retrain_and_sharded_wave():
+    from fortress_fl.unlearning import early_stopped_retrain
+    clients, test, info = data.build_federation("synthetic", n_clients=10, n_per_client=20, dim=16, seed=9)
+    fl = UnlearnableFL(clients, info["dim"], participation=0.9, seed=9, security_param=256)
+    fl.train(10)
+    val = {"X": test["X"][:100], "y": test["y"][:100]}
+    r = early_stopped_retrain(fl, [clients[0]["id"], clients[1]["id"]], val, block=2, max_rounds=10)
+    assert 2 <= r["rounds"] <= 10 and r["cost"]["rounds"] == r["rounds"]
+    sh = ShardedFL(clients, info["dim"], n_shards=2, participation=0.9, seed=9, security_param=256)
+    sh.train(4)
+    o = sh.unlearn_wave([clients[0]["id"], clients[2]["id"]])
+    assert o["shards_touched"] == 1
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

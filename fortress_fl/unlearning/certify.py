@@ -13,8 +13,9 @@ from .system import UnlearnableFL, UnlearnRequest
 
 def certify_model(theta: np.ndarray, manifests: Dict, client_ids: Sequence[str],
                   eps: float = 0.2, alpha: float = 0.05, manifest_digest: str = "",
-                  reveal_source: str = "local", seed: Optional[int] = None, model=None):
-    diffs = cohort_diffs(theta, manifests, client_ids, model)
+                  reveal_source: str = "local", seed: Optional[int] = None, model=None,
+                  revealed=None, missing: str = "worst"):
+    diffs = cohort_diffs(theta, manifests, client_ids, model, revealed, missing)
     ver = VouchVerifier(["loss", "margin"], VouchConfig(eps=eps, alpha=alpha),
                         manifest_sha256=manifest_digest)
     cert = ver.run(diffs, shuffle_seed=seed, early_stop=True, reveal_source=reveal_source)
