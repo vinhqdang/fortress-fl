@@ -6,6 +6,8 @@
 \usepackage{url}
 \usepackage{xcolor}
 \usepackage{microtype}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.16}
 
 \newtheorem{proposition}{Proposition}
 \newtheorem{theorem}{Theorem}
@@ -176,8 +178,36 @@ ICR $q$=0.25 & 1.8/4 & 0.55/3 & 5.3/4 & 0.11/1 & 0.30/5\\
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.92\textwidth]{new_recovery.png}
-\caption{Left: mean client energy per recovery policy (log scale; the early-stopped baseline is in Table~\ref{tab:icr} and Supplement Table~S4). Right: share of runs in which the audit flags the un-unlearned N-BaIoT linear model, against canary pairs per client $m$ and feature scale.}\label{fig:new}
+\begin{tikzpicture}
+\begin{axis}[ybar,log origin=infty,width=0.62\textwidth,height=4.6cm,ymode=log,ymin=0.05,ymax=200,bar width=4pt,
+ symbolic x coords={Synth.,HAR lin.,HAR MLP,NB lin.,NB MLP},xtick=data,x tick label style={font=\scriptsize},
+ y tick label style={font=\scriptsize},ylabel={mean client energy (J)},ylabel style={font=\footnotesize},
+ legend style={font=\tiny,at={(0.5,1.04)},anchor=south,legend columns=3},enlarge x limits=0.12,ymajorgrids,grid style={gray!30}]
+\addplot[fill=gray!70,draw=black!60] coordinates {(Synth.,10.4222) (HAR lin.,2.9071) (HAR MLP,86.6957) (NB lin.,0.9494) (NB MLP,27.4304)};
+\addlegendentry{retrain (60)}
+\addplot[fill=orange!80,draw=black!60] coordinates {(Synth.,1.5854) (HAR lin.,0.9413) (HAR MLP,7.4486) (NB lin.,0.3139) (NB MLP,3.6344)};
+\addlegendentry{retrain early}
+\addplot[fill=green!50!black,draw=black!60] coordinates {(Synth.,7.4632) (HAR lin.,1.9587) (HAR MLP,25.7716) (NB lin.,0.4223) (NB MLP,0.9511)};
+\addlegendentry{ladder}
+\addplot[fill=blue!70,draw=black!60] coordinates {(Synth.,3.5255) (HAR lin.,1.2865) (HAR MLP,18.7558) (NB lin.,0.3066) (NB MLP,0.9511)};
+\addlegendentry{ICR}
+\addplot[fill=red!70,draw=black!60] coordinates {(Synth.,2.0842) (HAR lin.,0.6142) (HAR MLP,9.2327) (NB lin.,0.1812) (NB MLP,0.4913)};
+\addlegendentry{ICR $q{=}0.5$}
+\addplot[fill=violet!80,draw=black!60] coordinates {(Synth.,1.8180) (HAR lin.,0.5512) (HAR MLP,5.3029) (NB lin.,0.1069) (NB MLP,0.2993)};
+\addlegendentry{ICR $q{=}0.25$}
+\end{axis}
+\end{tikzpicture}\hfill
+\begin{tikzpicture}
+\begin{axis}[width=0.32\textwidth,height=4.6cm,xmode=log,log basis x=2,xlabel={canary feature scale},xlabel style={font=\footnotesize},
+ ylabel={audit flags leaky model},ylabel style={font=\footnotesize},ymin=-0.05,ymax=1.05,xtick={1,2,4,8},xticklabels={1,2,4,8},
+ x tick label style={font=\scriptsize},y tick label style={font=\scriptsize},legend style={font=\tiny,at={(0.5,-0.42)},anchor=north,legend columns=2},ymajorgrids,grid style={gray!30},title={\footnotesize N-BaIoT linear}]
+\addplot[solid,mark=*,mark size=1.2pt] coordinates {(1,0.20) (2,0.20) (4,0.40) (8,0.20)};
+\addlegendentry{$m{=}6$}
+\addplot[dashed,mark=*,mark size=1.2pt] coordinates {(1,0.60) (2,0.60) (4,0.60) (8,0.80)};
+\addlegendentry{$m{=}12$}
+\end{axis}
+\end{tikzpicture}
+\caption{Left: mean client energy per recovery policy including the canary reveal (log scale; 5 seeds). Right: share of runs in which the audit flags the un-unlearned N-BaIoT linear model, against the canary feature scale for $m=6$ and $m=12$ pairs per client.}\label{fig:new}
 \end{figure*}
 
 \subsection{Does a certificate track forgetting?}
