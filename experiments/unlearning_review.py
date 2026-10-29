@@ -389,22 +389,31 @@ def rv7_job(args):
     f2 = UnlearnableFL(filt, fl.dim, model=model, lr=cfg["lr"], participation=cfg["p"], seed=seed)
     f2.train(cfg["T"])
     st_filter = cert_status(f2.theta, man, tg, cfg, seed, model)
-    # selective reveal: the revoking clients open only pairs that look forgotten
-    revealed = {}
-    for c in tg:
-        revealed[c] = [i for i, p in enumerate(man[c]["pairs"])
-                       if pair_scores(fl.theta, p, model)["loss"] <= 0]
-    st_drop = certify_model(fl.theta, man, tg, eps=cfg["eps"], alpha=0.05, reveal_source="seeded",
-                            seed=seed, model=model, revealed=revealed, missing="drop")[0].status
-    st_worst = certify_model(fl.theta, man, tg, eps=cfg["eps"], alpha=0.05, reveal_source="seeded",
-                             seed=seed, model=model, revealed=revealed, missing="worst")[0].status
-    st_honest = cert_status(fl.theta, man, tg, cfg, seed, model)
+    # selective reveal: the revoking clients open a sign-balanced subset of their pairs, so
+    # that the revealed signs look like fair coins (the attack needs only to hide the leak)
+    out_extra = {}
+    for tname, theta_t in (("none", fl.theta),
+                           ("subtract", copy.deepcopy(fl).unlearn(UnlearnRequest("client", client=tg[0], clients=tg), "subtract")["theta"])):
+        dl = {(c, i): pair_scores(theta_t, p, model)["loss"] for c in tg for i, p in enumerate(man[c]["pairs"])}
+        neg = [k for k, v in dl.items() if v <= 0]
+        pos = [k for k, v in dl.items() if v > 0]
+        k = min(len(neg), len(pos))
+        chosen = neg[:k] + pos[:k]
+        revealed = {c: [i for (cc, i) in chosen if cc == c] for c in tg}
+        out_extra[f"{tname}_honest"] = certify_model(theta_t, man, tg, eps=cfg["eps"], alpha=0.05,
+                                                     reveal_source="seeded", seed=seed, model=model)[0].status
+        out_extra[f"{tname}_cherry_drop"] = certify_model(theta_t, man, tg, eps=cfg["eps"], alpha=0.05,
+                                                          reveal_source="seeded", seed=seed, model=model,
+                                                          revealed=revealed, missing="drop")[0].status
+        out_extra[f"{tname}_cherry_worst"] = certify_model(theta_t, man, tg, eps=cfg["eps"], alpha=0.05,
+                                                           reveal_source="seeded", seed=seed, model=model,
+                                                           revealed=revealed, missing="worst")[0].status
+        out_extra[f"{tname}_revealed_frac"] = len(chosen) / max(1, len(dl))
+    st_honest = out_extra["none_honest"]
     rows.append(dict(seed=seed, ds=cfg["ds"], model=cfg["model"], ckind=cfg.get("ckind", "gaussian"),
                      detect_auc=auc, filter_recall=recall, status_honest=st_honest,
-                     status_after_filter=st_filter, status_cherry_drop=st_drop,
-                     status_cherry_worst=st_worst,
-                     revealed_frac=float(np.mean([len(v) / len(man[c]["pairs"]) for c, v in revealed.items()])),
-                     acc_filtered=V.accuracy(f2.theta, test, model)))
+                     status_after_filter=st_filter, acc_filtered=V.accuracy(f2.theta, test, model),
+                     **out_extra))
     return rows
 
 

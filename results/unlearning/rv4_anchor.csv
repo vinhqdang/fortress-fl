@@ -1,0 +1,6 @@
+interval,records,anchors,chain_only_detect,witness_detect,last_anchor,receipt_bytes,sig_valid,sig_tamper_detect
+5,61,13,0.0,0.92,-1,7800,,
+10,61,7,0.0,0.8933333333333333,-1,4200,,
+20,61,4,0.0,0.7333333333333333,-1,2400,,
+60,61,2,0.0,0.023333333333333334,-1,1200,,
+-1,61,0,,,-1,0,1.0,1.0

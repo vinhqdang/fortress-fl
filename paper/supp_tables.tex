@@ -85,38 +85,43 @@ N-BaIoT & mlp & retrain & 5/0/0 & 0.997 & 60 & 27.36 \\
 
 \begin{table}[h]
 \centering
-\caption{Recovery policies (5 seeds). ``U'' counts undetermined and unpowered. Last column: worst run.}\label{tab:s_icr}
+\caption{Recovery policies (5 seeds). Energy includes the canary reveal. U counts undetermined and unpowered. Last columns: worst run, and worst single device.}\label{tab:s_icr}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
-\begin{tabular}{@{}lllcccrr@{}}
+\begin{tabular}{@{}lllcccrrr@{}}
 \toprule
-Data & Model & Policy & I/U/R & Acc. & Rounds & Mean J & Max J \\
+Data & Model & Policy & I/U/R & Acc. & Rounds & Mean J & Max J & Dev. J \\
 \midrule
-Synthetic & linear & retrain & 5/0/0 & 0.986 & 60.0 & 9.64 & 9.88 \\
-Synthetic & linear & ladder & 5/0/0 & 0.985 & 41.0 & 6.68 & 13.81 \\
-Synthetic & linear & icr\_q1.0 & 5/0/0 & 0.982 & 17.0 & 2.74 & 4.83 \\
-Synthetic & linear & icr\_q0.5 & 4/1/0 & 0.982 & 16.0 & 1.30 & 4.81 \\
-Synthetic & linear & icr\_q0.25 & 4/1/0 & 0.988 & 26.0 & 1.03 & 2.37 \\
-HAR & linear & retrain & 3/2/0 & 0.999 & 60.0 & 2.69 & 2.74 \\
-HAR & linear & ladder & 3/2/0 & 0.996 & 39.0 & 1.74 & 3.82 \\
-HAR & linear & icr\_q1.0 & 4/1/0 & 0.996 & 24.0 & 1.07 & 2.63 \\
-HAR & linear & icr\_q0.5 & 4/1/0 & 0.996 & 18.0 & 0.40 & 1.29 \\
-HAR & linear & icr\_q0.25 & 3/2/0 & 0.996 & 27.0 & 0.34 & 0.75 \\
-HAR & mlp & retrain & 4/1/0 & 0.999 & 60.0 & 86.48 & 88.12 \\
-HAR & mlp & ladder & 4/1/0 & 0.997 & 18.0 & 25.56 & 119.58 \\
-HAR & mlp & icr\_q1.0 & 4/1/0 & 0.997 & 13.0 & 18.54 & 84.50 \\
-HAR & mlp & icr\_q0.5 & 4/1/0 & 0.997 & 13.0 & 9.02 & 41.47 \\
-HAR & mlp & icr\_q0.25 & 4/1/0 & 0.997 & 13.0 & 5.09 & 23.63 \\
-N-BaIoT & linear & retrain & 4/1/0 & 0.995 & 60.0 & 0.88 & 0.89 \\
-N-BaIoT & linear & ladder & 1/4/0 & 0.980 & 24.0 & 0.36 & 1.25 \\
-N-BaIoT & linear & icr\_q1.0 & 1/4/0 & 0.980 & 16.0 & 0.24 & 0.90 \\
-N-BaIoT & linear & icr\_q0.5 & 1/4/0 & 0.981 & 15.0 & 0.11 & 0.45 \\
-N-BaIoT & linear & icr\_q0.25 & 1/4/0 & 0.980 & 10.0 & 0.04 & 0.14 \\
-N-BaIoT & mlp & retrain & 5/0/0 & 0.997 & 60.0 & 27.36 & 27.74 \\
-N-BaIoT & mlp & ladder & 5/0/0 & 0.982 & 2.0 & 0.88 & 2.38 \\
-N-BaIoT & mlp & icr\_q1.0 & 5/0/0 & 0.982 & 2.0 & 0.88 & 2.38 \\
-N-BaIoT & mlp & icr\_q0.5 & 5/0/0 & 0.982 & 2.0 & 0.42 & 1.14 \\
-N-BaIoT & mlp & icr\_q0.25 & 5/0/0 & 0.982 & 2.0 & 0.23 & 0.61 \\
+Synthetic & linear & retrain (60) & 5/0/0 & 0.986 & 60.0 & 10.42 & 10.66 & 0.297 \\
+Synthetic & linear & retrain early & 5/0/0 & 1.000 & 5.0 & 1.59 & 1.66 & 0.034 \\
+Synthetic & linear & ladder & 5/0/0 & 0.985 & 41.0 & 7.46 & 14.60 & -- \\
+Synthetic & linear & ICR & 5/0/0 & 0.982 & 17.0 & 3.53 & 5.62 & 0.102 \\
+Synthetic & linear & ICR q=0.5 & 4/1/0 & 0.982 & 16.0 & 2.08 & 5.59 & 0.088 \\
+Synthetic & linear & ICR q=0.25 & 4/1/0 & 0.988 & 26.0 & 1.82 & 3.15 & 0.127 \\
+HAR & linear & retrain (60) & 3/2/0 & 0.999 & 60.0 & 2.91 & 2.96 & 0.156 \\
+HAR & linear & retrain early & 4/0/1 & 0.998 & 16.0 & 0.94 & 2.96 & 0.046 \\
+HAR & linear & ladder & 3/2/0 & 0.996 & 39.0 & 1.96 & 4.03 & -- \\
+HAR & linear & ICR & 4/1/0 & 0.996 & 24.0 & 1.29 & 2.85 & 0.119 \\
+HAR & linear & ICR q=0.5 & 4/1/0 & 0.996 & 18.0 & 0.61 & 1.51 & 0.084 \\
+HAR & linear & ICR q=0.25 & 3/2/0 & 0.996 & 27.0 & 0.55 & 0.97 & 0.141 \\
+HAR & mlp & retrain (60) & 4/1/0 & 0.999 & 60.0 & 86.70 & 88.34 & 5.015 \\
+HAR & mlp & retrain early & 4/1/0 & 0.999 & 5.0 & 7.45 & 8.29 & 0.579 \\
+HAR & mlp & ladder & 4/1/0 & 0.997 & 18.0 & 25.77 & 119.80 & -- \\
+HAR & mlp & ICR & 4/1/0 & 0.997 & 13.0 & 18.76 & 84.72 & 3.074 \\
+HAR & mlp & ICR q=0.5 & 4/1/0 & 0.997 & 13.0 & 9.23 & 41.68 & 2.773 \\
+HAR & mlp & ICR q=0.25 & 4/1/0 & 0.997 & 13.0 & 5.30 & 23.84 & 3.315 \\
+N-BaIoT & linear & retrain (60) & 4/1/0 & 0.995 & 60.0 & 0.95 & 0.96 & 0.035 \\
+N-BaIoT & linear & retrain early & 5/0/0 & 0.991 & 17.0 & 0.31 & 0.37 & 0.012 \\
+N-BaIoT & linear & ladder & 1/4/0 & 0.980 & 24.0 & 0.42 & 1.32 & -- \\
+N-BaIoT & linear & ICR & 1/4/0 & 0.980 & 16.0 & 0.31 & 0.97 & 0.013 \\
+N-BaIoT & linear & ICR q=0.5 & 1/4/0 & 0.981 & 15.0 & 0.18 & 0.52 & 0.012 \\
+N-BaIoT & linear & ICR q=0.25 & 1/4/0 & 0.980 & 10.0 & 0.11 & 0.20 & 0.008 \\
+N-BaIoT & mlp & retrain (60) & 5/0/0 & 0.997 & 60.0 & 27.43 & 27.81 & 1.092 \\
+N-BaIoT & mlp & retrain early & 5/0/0 & 0.992 & 8.0 & 3.63 & 4.56 & 0.182 \\
+N-BaIoT & mlp & ladder & 5/0/0 & 0.982 & 2.0 & 0.95 & 2.44 & -- \\
+N-BaIoT & mlp & ICR & 5/0/0 & 0.982 & 2.0 & 0.95 & 2.44 & 0.126 \\
+N-BaIoT & mlp & ICR q=0.5 & 5/0/0 & 0.982 & 2.0 & 0.49 & 1.20 & 0.126 \\
+N-BaIoT & mlp & ICR q=0.25 & 5/0/0 & 0.982 & 2.0 & 0.30 & 0.67 & 0.114 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -215,6 +220,296 @@ proof length (hashes) & 5.7 \\
 tampering detected & 1.00 \\
 checkpoints (kB) & 417 \\
 stored updates (kB) & 15154 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Energy accounting (5 seeds): traffic, computation, canary reveal traffic, server storage of stored updates, and entanglement-score computation.}\label{tab:s_acct}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lllrrrrr@{}}
+\toprule
+Data & Model & Policy & MB & GFLOP & Reveal MB & Stored MB & Entangle GFLOP \\
+\midrule
+Synthetic & linear & retrain (60) & 11.91 & 0.11 & 0.98 & 17.7 & 0.000 \\
+Synthetic & linear & retrain early & 0.99 & 0.01 & 0.98 & 17.7 & 0.000 \\
+Synthetic & linear & ladder & 8.25 & 0.07 & 0.98 & 17.7 & 0.000 \\
+Synthetic & linear & ICR & 3.38 & 0.03 & 0.98 & 17.7 & 0.007 \\
+Synthetic & linear & ICR q=0.5 & 1.60 & 0.01 & 0.98 & 17.7 & 0.007 \\
+Synthetic & linear & ICR q=0.25 & 1.27 & 0.01 & 0.98 & 17.7 & 0.007 \\
+HAR & linear & retrain (60) & 3.27 & 0.07 & 0.27 & 4.8 & 0.000 \\
+HAR & linear & retrain early & 0.88 & 0.02 & 0.27 & 4.8 & 0.000 \\
+HAR & linear & ladder & 2.12 & 0.05 & 0.27 & 4.8 & 0.000 \\
+HAR & linear & ICR & 1.30 & 0.03 & 0.27 & 4.8 & 0.002 \\
+HAR & linear & ICR q=0.5 & 0.48 & 0.01 & 0.27 & 4.8 & 0.002 \\
+HAR & linear & ICR q=0.25 & 0.41 & 0.01 & 0.27 & 4.8 & 0.002 \\
+HAR & mlp & retrain (60) & 103.63 & 3.57 & 0.27 & 155.5 & 0.000 \\
+HAR & mlp & retrain early & 8.67 & 0.30 & 0.27 & 155.5 & 0.000 \\
+HAR & mlp & ladder & 30.62 & 1.06 & 0.27 & 155.5 & 0.000 \\
+HAR & mlp & ICR & 22.22 & 0.77 & 0.27 & 155.5 & 0.058 \\
+HAR & mlp & ICR q=0.5 & 10.81 & 0.37 & 0.27 & 155.5 & 0.058 \\
+HAR & mlp & ICR q=0.25 & 6.10 & 0.21 & 0.27 & 155.5 & 0.058 \\
+N-BaIoT & linear & retrain (60) & 1.07 & 0.02 & 0.08 & 1.5 & 0.000 \\
+N-BaIoT & linear & retrain early & 0.30 & 0.01 & 0.08 & 1.5 & 0.000 \\
+N-BaIoT & linear & ladder & 0.43 & 0.01 & 0.08 & 1.5 & 0.000 \\
+N-BaIoT & linear & ICR & 0.29 & 0.01 & 0.08 & 1.5 & 0.001 \\
+N-BaIoT & linear & ICR q=0.5 & 0.14 & 0.00 & 0.08 & 1.5 & 0.001 \\
+N-BaIoT & linear & ICR q=0.25 & 0.05 & 0.00 & 0.08 & 1.5 & 0.001 \\
+N-BaIoT & mlp & retrain (60) & 32.79 & 1.13 & 0.08 & 48.9 & 0.000 \\
+N-BaIoT & mlp & retrain early & 4.28 & 0.15 & 0.08 & 48.9 & 0.000 \\
+N-BaIoT & mlp & ladder & 1.06 & 0.04 & 0.08 & 48.9 & 0.000 \\
+N-BaIoT & mlp & ICR & 1.06 & 0.04 & 0.08 & 48.9 & 0.018 \\
+N-BaIoT & mlp & ICR q=0.5 & 0.51 & 0.02 & 0.08 & 48.9 & 0.018 \\
+N-BaIoT & mlp & ICR q=0.25 & 0.28 & 0.01 & 0.08 & 48.9 & 0.018 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Sensitivity of the energy savings (percent) to $e_{\rm flop}\in[0.1,10]$~nJ and $e_{\rm bit}\in[10,1000]$~nJ/bit. Negative: ICR costs more.}\label{tab:s_sens}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}llccc@{}}
+\toprule
+Data & Model & ICR vs retrain (60) & ICR vs early & ICR q=0.25 vs early \\
+\midrule
+Synthetic & linear & 66 to 69 & -165 to -122 & -20 to -15 \\
+HAR & linear & 56 to 59 & -44 to -36 & 41 to 50 \\
+HAR & mlp & 78 to 79 & -155 to -152 & 29 to 29 \\
+N-BaIoT & linear & 68 to 71 & 2 to 3 & 66 to 78 \\
+N-BaIoT & mlp & 97 to 97 & 74 to 75 & 92 to 93 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Independent forgetting criteria (5 seeds): parameter distance to a retrained model in units of the retraining noise floor, prediction disagreement with it, loss on the revoked clients' real records relative to it, test accuracy.}\label{tab:s_forget}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lllcrrrr@{}}
+\toprule
+Data & Model & Method & I/U/R & Gap & Disagree & Loss ratio & Acc. \\
+\midrule
+Synthetic & linear & none & 0/0/5 & 8.13 & 0.023 & 0.18 & 0.983 \\
+Synthetic & linear & subtract & 2/1/2 & 6.80 & 0.370 & 8.00 & 0.620 \\
+Synthetic & linear & subtract+5 & 2/1/2 & 4.76 & 0.014 & 1.94 & 0.984 \\
+Synthetic & linear & subtract+10 & 2/3/0 & 4.15 & 0.011 & 1.72 & 0.984 \\
+Synthetic & linear & subtract+20 & 3/2/0 & 3.69 & 0.010 & 1.53 & 0.982 \\
+Synthetic & linear & icr\_q1.0 & 5/0/0 & 4.26 & 0.010 & 1.77 & 0.982 \\
+Synthetic & linear & icr\_q0.25 & 4/1/0 & 5.60 & 0.015 & 1.94 & 0.988 \\
+Synthetic & linear & retrain\_early & 5/0/0 & 9.79 & 0.014 & 0.64 & 1.000 \\
+Synthetic & linear & retrain\_seed3 & 5/0/0 & 1.04 & 0.004 & 1.00 & 0.985 \\
+HAR & linear & none & 0/0/5 & 8.12 & 0.000 & 0.05 & 0.999 \\
+HAR & linear & subtract & 2/2/1 & 3.99 & 0.007 & 3.37 & 0.992 \\
+HAR & linear & subtract+5 & 2/2/1 & 2.98 & 0.001 & 1.21 & 0.998 \\
+HAR & linear & subtract+10 & 2/2/1 & 2.62 & 0.001 & 1.11 & 0.998 \\
+HAR & linear & subtract+20 & 3/1/1 & 2.29 & 0.000 & 1.03 & 0.999 \\
+HAR & linear & icr\_q1.0 & 4/0/1 & 3.14 & 0.003 & 1.42 & 0.996 \\
+HAR & linear & icr\_q0.25 & 3/1/1 & 3.93 & 0.003 & 1.66 & 0.996 \\
+HAR & linear & retrain\_early & 4/0/1 & 7.33 & 0.001 & 1.00 & 0.998 \\
+HAR & linear & retrain\_seed3 & 3/2/0 & 0.87 & 0.000 & 0.98 & 0.999 \\
+HAR & mlp & none & 0/0/5 & 6.61 & 0.000 & 0.05 & 0.999 \\
+HAR & mlp & subtract & 3/2/0 & 3.85 & 0.003 & 1.88 & 0.996 \\
+HAR & mlp & subtract+5 & 4/1/0 & 3.19 & 0.001 & 1.17 & 0.998 \\
+HAR & mlp & subtract+10 & 4/1/0 & 2.85 & 0.001 & 1.08 & 0.998 \\
+HAR & mlp & subtract+20 & 4/1/0 & 2.48 & 0.001 & 1.03 & 0.998 \\
+HAR & mlp & icr\_q1.0 & 4/1/0 & 3.44 & 0.002 & 1.27 & 0.997 \\
+HAR & mlp & icr\_q0.25 & 4/0/1 & 3.66 & 0.002 & 1.47 & 0.997 \\
+HAR & mlp & retrain\_early & 4/1/0 & 9.17 & 0.000 & 1.17 & 0.999 \\
+HAR & mlp & retrain\_seed3 & 4/1/0 & 0.93 & 0.000 & 0.99 & 0.999 \\
+N-BaIoT & linear & none & 3/1/1 & 2.78 & 0.001 & 0.92 & 0.995 \\
+N-BaIoT & linear & subtract & 4/1/0 & 2.88 & 0.136 & 6.51 & 0.865 \\
+N-BaIoT & linear & subtract+5 & 4/1/0 & 1.85 & 0.038 & 2.95 & 0.958 \\
+N-BaIoT & linear & subtract+10 & 4/1/0 & 1.41 & 0.002 & 1.17 & 0.995 \\
+N-BaIoT & linear & subtract+20 & 4/1/0 & 1.18 & 0.001 & 1.08 & 0.995 \\
+N-BaIoT & linear & icr\_q1.0 & 4/1/0 & 2.04 & 0.017 & 1.58 & 0.980 \\
+N-BaIoT & linear & icr\_q0.25 & 5/0/0 & 2.45 & 0.017 & 1.63 & 0.980 \\
+N-BaIoT & linear & retrain\_early & 5/0/0 & 3.12 & 0.005 & 1.34 & 0.991 \\
+N-BaIoT & linear & retrain\_seed3 & 4/1/0 & 1.15 & 0.000 & 0.98 & 0.995 \\
+N-BaIoT & mlp & none & 0/0/5 & 2.03 & 0.000 & 0.81 & 0.997 \\
+N-BaIoT & mlp & subtract & 5/0/0 & 1.93 & 0.035 & 6.54 & 0.962 \\
+N-BaIoT & mlp & subtract+5 & 5/0/0 & 1.54 & 0.001 & 1.64 & 0.997 \\
+N-BaIoT & mlp & subtract+10 & 5/0/0 & 1.36 & 0.000 & 1.33 & 0.997 \\
+N-BaIoT & mlp & subtract+20 & 5/0/0 & 1.21 & 0.000 & 1.13 & 0.997 \\
+N-BaIoT & mlp & icr\_q1.0 & 5/0/0 & 1.76 & 0.015 & 4.04 & 0.982 \\
+N-BaIoT & mlp & icr\_q0.25 & 5/0/0 & 1.80 & 0.015 & 4.08 & 0.982 \\
+N-BaIoT & mlp & retrain\_early & 5/0/0 & 3.42 & 0.005 & 4.53 & 0.992 \\
+N-BaIoT & mlp & retrain\_seed3 & 5/0/0 & 0.89 & 0.000 & 1.01 & 0.997 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Calibration with an unpredictable (OS entropy) reveal order, $T=30$.}\label{tab:s_beacon}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lllcc@{}}
+\toprule
+Data & Model & State & Runs & I/U/R \\
+\midrule
+Synthetic & linear & none & 60 & 0/0/60 \\
+Synthetic & linear & retrain & 60 & 60/0/0 \\
+HAR & mlp & none & 60 & 0/0/60 \\
+HAR & mlp & retrain & 60 & 51/9/0 \\
+N-BaIoT & mlp & none & 60 & 14/10/36 \\
+N-BaIoT & mlp & retrain & 60 & 53/6/1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Dropout, asynchrony and staggered enrolment (5 seeds): certificate outcomes, ICR rounds, ICR energy as percent of retraining, rollback checkpoint and rollback rounds.}\label{tab:s_dyn}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lllccrrrr@{}}
+\toprule
+Data & Model & Variant & Retrain I/U/R & ICR I/U/R & ICR rounds & ICR \% & Ckpt & Rollback rounds \\
+\midrule
+Synthetic & linear & base & 5/0/0 & 5/0/0 & 17 & 28 & 0 & 60 \\
+Synthetic & linear & dropout0.3 & 5/0/0 & 5/0/0 & 14 & 23 & 0 & 60 \\
+Synthetic & linear & stale3 & 5/0/0 & 5/0/0 & 7 & 12 & 0 & 60 \\
+Synthetic & linear & dropout+stale & 5/0/0 & 5/0/0 & 6 & 10 & 0 & 60 \\
+Synthetic & linear & staggered & 5/0/0 & 5/0/0 & 4 & 8 & 26 & 34 \\
+HAR & linear & base & 3/2/0 & 4/1/0 & 24 & 40 & 0 & 60 \\
+HAR & linear & dropout0.3 & 3/2/0 & 4/1/0 & 17 & 29 & 0 & 60 \\
+HAR & linear & stale3 & 3/2/0 & 4/1/0 & 22 & 36 & 0 & 60 \\
+HAR & linear & dropout+stale & 3/2/0 & 4/1/0 & 21 & 35 & 0 & 60 \\
+HAR & linear & staggered & 4/1/0 & 4/1/0 & 12 & 24 & 26 & 34 \\
+HAR & mlp & base & 4/1/0 & 4/1/0 & 13 & 21 & 0 & 60 \\
+HAR & mlp & dropout0.3 & 4/1/0 & 4/1/0 & 13 & 22 & 0 & 60 \\
+HAR & mlp & stale3 & 3/2/0 & 5/0/0 & 9 & 15 & 0 & 60 \\
+HAR & mlp & dropout+stale & 3/2/0 & 4/1/0 & 12 & 20 & 0 & 60 \\
+HAR & mlp & staggered & 4/1/0 & 4/1/0 & 12 & 24 & 26 & 34 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Cohort-sharded training (4 cohorts, 5 seeds): wave inside one cohort or spread.}\label{tab:s_shard}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lllrrrrrrc@{}}
+\toprule
+Data & Model & Wave & Clients & Cohorts & Sharded J & Mono J & Acc. sh. & Acc. mono & I/U/R \\
+\midrule
+Synthetic & linear & spread & 20 & 4 & 9.66 & 9.64 & 1.000 & 0.986 & 5/0/0 \\
+Synthetic & linear & one\_shard & 5 & 1 & 2.35 & 13.28 & 1.000 & 0.983 & 2/3/0 \\
+HAR & linear & spread & 10 & 4 & 3.07 & 2.69 & 0.999 & 0.999 & 3/2/0 \\
+HAR & linear & one\_shard & 5 & 1 & 0.68 & 3.39 & 0.999 & 0.999 & 4/1/0 \\
+HAR & mlp & spread & 10 & 4 & 98.78 & 86.48 & 0.999 & 0.999 & 4/1/0 \\
+HAR & mlp & one\_shard & 5 & 1 & 21.70 & 108.83 & 0.999 & 0.999 & 2/3/0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Class-level (mirai\_udp on N-BaIoT) and sample-level (25\% of the largest client) requests (5 seeds).}\label{tab:s_gran}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lllllrr@{}}
+\toprule
+Data & Model & Kind & Method & Result & Rounds & Ckpt \\
+\midrule
+N-BaIoT & linear & class & none & forget acc 1.000, retain acc 0.995 & 0 & 0 \\
+N-BaIoT & linear & class & retrain & forget acc 0.986, retain acc 0.994 & 60 & 0 \\
+N-BaIoT & linear & class & rollback & forget acc 0.986, retain acc 0.994 & 60 & 0 \\
+N-BaIoT & linear & sample & none & gap 1.04, acc 0.996 & 0 & 0 \\
+N-BaIoT & linear & sample & retrain & gap 0.96, acc 0.996 & 60 & 0 \\
+N-BaIoT & linear & sample & rollback & gap 0.96, acc 0.996 & 60 & 0 \\
+N-BaIoT & mlp & class & none & forget acc 1.000, retain acc 0.997 & 0 & 0 \\
+N-BaIoT & mlp & class & retrain & forget acc 1.000, retain acc 0.997 & 60 & 0 \\
+N-BaIoT & mlp & class & rollback & forget acc 1.000, retain acc 0.997 & 60 & 0 \\
+N-BaIoT & mlp & sample & none & gap 0.85, acc 0.997 & 0 & 0 \\
+N-BaIoT & mlp & sample & retrain & gap 1.11, acc 0.997 & 60 & 0 \\
+N-BaIoT & mlp & sample & rollback & gap 1.11, acc 0.997 & 60 & 0 \\
+HAR & mlp & sample & none & gap 1.16, acc 0.999 & 0 & 0 \\
+HAR & mlp & sample & retrain & gap 0.95, acc 0.999 & 60 & 0 \\
+HAR & mlp & sample & rollback & gap 0.95, acc 0.999 & 60 & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Attacks on the audit (MLP, 5 seeds): detector AUC, share of canaries filtered, un-unlearned model flagged honestly, certified after filtering, certified after a sign-balanced selective reveal under the accept-partial rule and under the strict rule.}\label{tab:s_att}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}llcccccc@{}}
+\toprule
+Data & Canary & AUC & Recall & Flagged & Filter cert. & Cherry (accept) & Cherry (strict) \\
+\midrule
+HAR & gaussian & 0.94 & 0.59 & 5/5 & 0/5 & 4/5 & 0/5 \\
+HAR & crossover & 0.70 & 0.34 & 2/5 & 3/5 & 5/5 & 0/5 \\
+N-BaIoT & gaussian & 0.92 & 0.48 & 5/5 & 2/5 & 5/5 & 0/5 \\
+N-BaIoT & crossover & 0.71 & 0.28 & 1/5 & 4/5 & 5/5 & 1/5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Rewrite-and-relink attack on the ledger (300 trials per interval, 3 witnesses). Ed25519: 200/200 valid, 200/200 tampered certificates rejected.}\label{tab:s_anchor}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}ccccc@{}}
+\toprule
+Anchor every & Chain only & With witnesses & Anchors & Receipt bytes \\
+\midrule
+5 & 0.00 & 0.92 & 13 & 7800 \\
+10 & 0.00 & 0.89 & 7 & 4200 \\
+20 & 0.00 & 0.73 & 4 & 2400 \\
+60 & 0.00 & 0.02 & 2 & 1200 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Clopper--Pearson 95\% intervals for headline rates.}\label{tab:s_ci}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Quantity & k/n & \% & 95\% CI \\
+\midrule
+Exact retrains flagged, seeded order & 4/280 & 1.4 & 0.4--3.6 \\
+Exact retrains flagged, random order & 1/180 & 0.6 & 0.0--3.1 \\
+Early-stopped retrains flagged & 1/25 & 4.0 & 0.1--20.4 \\
+Un-unlearned flagged, synthetic+HAR, seeded & 160/160 & 100.0 & 97.7--100.0 \\
+Un-unlearned flagged, synthetic+HAR MLP, random & 120/120 & 100.0 & 97.0--100.0 \\
+Un-unlearned flagged, N-BaIoT MLP, random & 36/60 & 60.0 & 46.5--72.4 \\
+Selective reveal certified, accept-partial & 19/20 & 95.0 & 75.1--99.9 \\
+Selective reveal certified, strict & 1/20 & 5.0 & 0.1--24.9 \\
+Filter attack certified, Gaussian & 2/10 & 20.0 & 2.5--55.6 \\
+Filter attack certified, crossover & 7/10 & 70.0 & 34.8--93.3 \\
+retrain certified, Synthetic linear & 5/5 & 100.0 & 47.8--100.0 \\
+retrain certified, HAR linear & 3/5 & 60.0 & 14.7--94.7 \\
+retrain certified, HAR mlp & 4/5 & 80.0 & 28.4--99.5 \\
+retrain certified, N-BaIoT linear & 4/5 & 80.0 & 28.4--99.5 \\
+retrain certified, N-BaIoT mlp & 5/5 & 100.0 & 47.8--100.0 \\
+retrain\_early certified, Synthetic linear & 5/5 & 100.0 & 47.8--100.0 \\
+retrain\_early certified, HAR linear & 4/5 & 80.0 & 28.4--99.5 \\
+retrain\_early certified, HAR mlp & 4/5 & 80.0 & 28.4--99.5 \\
+retrain\_early certified, N-BaIoT linear & 5/5 & 100.0 & 47.8--100.0 \\
+retrain\_early certified, N-BaIoT mlp & 5/5 & 100.0 & 47.8--100.0 \\
+icr\_q1.0 certified, Synthetic linear & 5/5 & 100.0 & 47.8--100.0 \\
+icr\_q1.0 certified, HAR linear & 4/5 & 80.0 & 28.4--99.5 \\
+icr\_q1.0 certified, HAR mlp & 4/5 & 80.0 & 28.4--99.5 \\
+icr\_q1.0 certified, N-BaIoT linear & 1/5 & 20.0 & 0.5--71.6 \\
+icr\_q1.0 certified, N-BaIoT mlp & 5/5 & 100.0 & 47.8--100.0 \\
+icr\_q0.25 certified, Synthetic linear & 4/5 & 80.0 & 28.4--99.5 \\
+icr\_q0.25 certified, HAR linear & 3/5 & 60.0 & 14.7--94.7 \\
+icr\_q0.25 certified, HAR mlp & 4/5 & 80.0 & 28.4--99.5 \\
+icr\_q0.25 certified, N-BaIoT linear & 1/5 & 20.0 & 0.5--71.6 \\
+icr\_q0.25 certified, N-BaIoT mlp & 5/5 & 100.0 & 47.8--100.0 \\
 \bottomrule
 \end{tabular}
 \end{table}

@@ -78,7 +78,12 @@ def _logit(theta, x, model=None):
 
 
 def pair_scores(theta: np.ndarray, pair: Dict, model=None) -> Dict[str, float]:
-    """Score differences D = s(in) - s(ghost) for the declared score class."""
+    """
+    Score differences D = s(in) - s(ghost) for the declared score class. The 'loss'
+    score is the logistic loss (lower for a memorised record, so D<0 signals leakage)
+    and 'margin' is the signed logit margin (higher for a memorised record, D>0). The
+    verifier tests both directions, so the sign convention does not affect validity.
+    """
     out = {}
     for name in ("loss", "margin"):
         s = []

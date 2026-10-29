@@ -144,8 +144,9 @@ class UnlearnableFL:
             kept = [c for c in out
                     if np.random.default_rng([seed, t, zlib.crc32(c.encode()), 7]).random() >= self.dropout]
             out = kept if len(kept) >= 3 else out[:3]
-        if len(out) < 3:   # fall back so clustering is defined
-            out = list(active)[:max(3, len(out))]
+        if len(out) < 3:   # fall back so clustering is defined (enrolled clients only)
+            enrolled = [c for c in active if t >= self.join_round.get(c, 0)]
+            out = enrolled[:max(3, len(out))]
         return out
 
     def _local_update(self, cid: str, theta: np.ndarray, data_view=None) -> np.ndarray:

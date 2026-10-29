@@ -76,7 +76,8 @@ def build(cfg, seed, poison=0, target=None):
     join = None
     if cfg.get("join"):      # staggered enrolment: low-index clients join last
         n = len(clients)
-        join = {c["id"]: int(cfg["join"] * (n - 1 - i) / max(1, n - 1)) for i, c in enumerate(clients)}
+        join = {c["id"]: (0 if i >= n - 8 else int(cfg["join"] * (n - 1 - i) / max(1, n - 1)))
+                for i, c in enumerate(clients)}
     fl = UnlearnableFL(clients, dim, model=model, lr=cfg["lr"], participation=cfg["p"],
                        dropout=cfg.get("dropout", 0.0), max_staleness=cfg.get("stale", 0),
                        join_round=join,

@@ -13,12 +13,18 @@
 \author{Quang-Vinh Dang}
 \maketitle
 
-\section{Setup and cost model}
-All experiments are produced by the scripts in the repository (\texttt{experiments/unlearning\_experiments.py}, \texttt{unlearning\_real.py}, \texttt{unlearning\_new.py}); tables below are written from the result files by \texttt{paper/make\_supp\_tables.py}.
+\section{Setup, cost model and attack definitions}
+All experiments are produced by the scripts in the repository (\texttt{experiments/unlearning\_experiments.py}, \texttt{unlearning\_real.py}, \texttt{unlearning\_new.py}, \texttt{unlearning\_review.py}); the tables below are written from the result files by \texttt{paper/make\_supp\_tables.py}.
 
-\textbf{Training.} Binary logistic loss, full-batch local gradient, update clipping at norm 1, learning rate 1, $T=60$ rounds, participation $p=0.6$ (independent per client and round), reputation rate 0.1 and penalty 0.2, Pedersen commitments with 512-bit group, spectral split gated by a separation margin of 0.25, no differential-privacy noise unless stated. Synthetic fleet: 60 clients, $d=1024$, 12 real records and 6 canary pairs per client, Dirichlet($\alpha{=}1$) over ten latent classes, 8\% label noise. UCI HAR: 30 subjects, 40 records each. N-BaIoT: nine devices, five sites each, 40 records each, features $\operatorname{sign}(x)\log(1+|x|)$ standardised. The MLP has 32 tanh hidden units. Test records are held out per client. Audits use $\epsilon=0.2$, $\alpha=0.05$ and a reveal order drawn from a fixed seed.
+\textbf{Training.} Binary logistic loss, full-batch local gradient, update clipping at norm 1, learning rate 1, $T=60$ rounds, participation $p=0.6$ (independent per client and round), reputation rate 0.1 and penalty 0.2, Pedersen commitments with a 512-bit group, spectral split gated by a separation margin of 0.25, no differential-privacy noise unless stated. Synthetic fleet: 60 clients, $d=1024$, 12 real records and 6 canary pairs per client, Dirichlet($\alpha{=}1$) over ten latent classes, 8\% label noise. UCI HAR: 30 subjects, 40 records each. N-BaIoT: nine devices, five sites each, 40 records each, features $\operatorname{sign}(x)\log(1+|x|)$ standardised. The MLP has 32 tanh hidden units. Test records are held out per client. Audits use $\epsilon=0.2$, $\alpha=0.05$ and, unless stated, a reveal order drawn from a fixed seed.
 
-\textbf{Cost model.} A client round with $n$ records costs $n\cdot f$ FLOPs ($f=4d$ for the linear model, $6P$ for an MLP with $P$ parameters), uploads $4P+64$ bytes (float32 update and a 512-bit commitment) and downloads $4P$ bytes. Energy is $e_{\rm flop}\cdot\text{FLOPs}+e_{\rm bit}\cdot 8\cdot\text{bytes}$ with $e_{\rm flop}=1$~nJ and $e_{\rm bit}=100$~nJ; these are assumed constants, not measurements. With them radio traffic dominates, so energy follows bytes. Canary reveal sends $2m(d{+}1)\cdot 4$ bytes per revoked client once.
+\textbf{Cost model.} A client round with $n$ records costs $n\cdot f$ FLOPs ($f=4d$ for the linear model, $6P$ for an MLP with $P$ parameters), uploads $4P+64$ bytes (float32 update and a 512-bit commitment) and downloads $4P$ bytes. Energy is $e_{\rm flop}\cdot\text{FLOPs}+e_{\rm bit}\cdot 8\cdot\text{bytes}$ with $e_{\rm flop}=1$~nJ and $e_{\rm bit}=100$~nJ; these are assumed constants, not measurements, and Table~S10 varies each over a hundred-fold range. The canary reveal ($2m(d{+}1)\cdot4$ bytes per revoked client) is added to every policy. Dropped clients are not charged. Server computation and storage are reported separately (Table~S9).
+
+\textbf{Early-stopped retraining.} From the initial model on the retained clients, blocks of 5 rounds are run until validation accuracy (150 held-out records) is within 0.5 points of the model before unlearning, up to 60 rounds.
+
+\textbf{Dynamics.} Dropout: each selected client fails with probability 0.3 before uploading (at least three survive). Asynchrony: each client computes its gradient at the model of a round drawn uniformly from the last four. Staggered enrolment: client $i$ of $N$ may take part only from round $\lfloor 40(N-1-i)/(N-1)\rfloor$, and the eight last clients from round 0; the wave consists of the first (latest-enrolled) clients.
+
+\textbf{Attacks.} \emph{Crossover canaries:} each coordinate of a canary is taken from one of two random records of the client, label random. \emph{Filter:} an isolation forest (100 trees) is fitted to all training records, and the operator removes as many highest-scoring records as there are canaries before training the un-unlearned model. \emph{Selective reveal:} the revoking clients open all pairs with a non-positive loss difference and an equal number of positive ones; the accept-partial verifier ignores unopened pairs, the strict verifier scores them as extreme. \emph{Ledger:} a record in the middle of the chain is edited and every later hash is recomputed; three witnesses store the heads published at the anchor interval.
 
 \section{Additional figures}
 \begin{figure}[h]
@@ -52,6 +58,22 @@ All experiments are produced by the scripts in the repository (\texttt{experimen
 \caption{N-BaIoT, one revoked client: share of runs in which the retrained model is certified and the un-unlearned model is flagged, against canary pairs per client. The audit has little power at these model sizes.}\label{fig:s_nbpc}
 \end{figure}
 
+\begin{figure}[h]
+\centering
+\includegraphics[width=\columnwidth]{cert_methods.png}
+\caption{Synthetic fleet (10 seeds): certificate outcomes, client energy and upper bound on the residual advantage per operator.}\label{fig:s_cm}
+\end{figure}
+\begin{figure*}[h]
+\centering
+\includegraphics[width=0.92\textwidth]{har_methods.png}
+\caption{UCI HAR: certificate outcomes and client energy per operator for the linear model and the MLP (5 seeds).}\label{fig:s_har}
+\end{figure*}
+\begin{figure}[h]
+\centering
+\includegraphics[width=\columnwidth]{har_per_client.png}
+\caption{One revoked client on UCI HAR: share of runs in which the retrained model is certified and the un-unlearned model is flagged, against canary pairs per client (5 seeds).}\label{fig:s_harpc}
+\end{figure}
+
 \section{Additional tables}
 \input{supp_tables.tex}
 
@@ -63,6 +85,7 @@ python experiments/unlearning_real.py --dataset har
 python experiments/prepare_nbaiot.py           # once
 python experiments/unlearning_real.py --dataset nbaiot
 python experiments/unlearning_new.py           # ICR, twins, ...
+python experiments/unlearning_review.py        # review-round experiments
 python experiments/fig_new.py
 python paper/make_supp_tables.py
 python tests/test_unlearning.py
